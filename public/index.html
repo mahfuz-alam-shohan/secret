@@ -2,230 +2,247 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Messenger</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Secure Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         .hidden { display: none !important; }
-        /* Smooth transitions for mobile menu */
-        .transition-transform { transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }
+        /* Scrollbar polish */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* Mobile menu transition */
+        .mobile-menu-enter { transform: translateX(-100%); }
+        .mobile-menu-active { transform: translateX(0); }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex">
 
-    <!-- === GLOBAL ERROR TOAST === -->
-    <div id="toast" class="fixed top-5 right-5 hidden z-50 transform transition-all duration-300 translate-y-[-100%] opacity-0">
-        <div id="toast-content" class="bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl font-medium flex items-center gap-3">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span id="toast-msg">Error Message</span>
+    <!-- === TOAST NOTIFICATION SYSTEM === -->
+    <div id="toast-container" class="fixed top-6 right-6 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- === INITIAL LOADING OVERLAY === -->
+    <div id="init-loader" class="fixed inset-0 bg-white z-[70] flex flex-col items-center justify-center">
+        <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-4 text-slate-500 text-sm font-medium tracking-wide">INITIALIZING PLATFORM</p>
+    </div>
+
+    <!-- === PUBLIC VIEWER APP (Full Screen, No Dashboard) === -->
+    <div id="viewer-app" class="hidden fixed inset-0 z-[80] bg-slate-900 text-white flex flex-col items-center justify-center p-6 overflow-y-auto">
+        <div class="max-w-2xl w-full">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 shadow-xl mb-6">
+                    <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h1 class="text-3xl font-bold tracking-tight mb-2">Secure Message</h1>
+                <p class="text-slate-400">Content is encrypted and ephemeral.</p>
+            </div>
+
+            <div id="viewer-content" class="hidden relative bg-slate-800/50 backdrop-blur-md border border-slate-700 rounded-2xl p-8 shadow-2xl">
+                <div class="absolute -top-3 left-8 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Decrypted</div>
+                <p id="secret-text" class="text-xl font-mono leading-relaxed select-all text-slate-200">--</p>
+            </div>
+
+            <div id="viewer-error" class="hidden text-center py-10 bg-red-900/10 border border-red-900/20 rounded-2xl">
+                <p class="text-red-400 font-medium text-lg">Message Expired or Invalid</p>
+                <p class="text-slate-500 text-sm mt-2">This link has self-destructed.</p>
+            </div>
+
+            <div class="text-center mt-12">
+                <a href="/" class="text-slate-500 hover:text-white text-sm font-medium transition-colors">Powered by SecurePlatform</a>
+            </div>
         </div>
     </div>
 
-    <!-- === INITIAL LOADING SPINNER === -->
-    <div id="init-loader" class="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-        <p class="text-gray-500 font-medium">Connecting securely...</p>
-    </div>
-
-    <!-- === AUTHENTICATION SCREENS (Login / Setup) === -->
-    <div id="auth-app" class="hidden min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-            <div class="text-center mb-8">
-                <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                </div>
-                <h1 id="auth-title" class="text-2xl font-bold text-gray-900">Admin Access</h1>
-                <p id="auth-subtitle" class="text-gray-500 mt-2">Sign in to manage your secrets.</p>
+    <!-- === AUTH LAYOUT (Login/Setup) === -->
+    <div id="auth-app" class="hidden fixed inset-0 z-[60] bg-slate-50 flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold text-slate-900">Platform Access</h1>
+                <p class="text-slate-500 mt-1">Authenticate to continue to the dashboard.</p>
             </div>
+            
+            <!-- SETUP FORM -->
+            <form id="setup-form" class="hidden space-y-4">
+                <div class="p-3 bg-blue-50 text-blue-700 text-sm rounded-lg mb-4">
+                    <strong>Welcome:</strong> Please set up your master admin credentials.
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Master Username</label>
+                    <input type="text" id="setup-user" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Master Password</label>
+                    <input type="password" id="setup-pass" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" required>
+                </div>
+                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-lg shadow-indigo-200">Initialize System</button>
+            </form>
 
             <!-- LOGIN FORM -->
-            <form id="login-form" class="space-y-5 hidden">
+            <form id="login-form" class="hidden space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input type="text" id="login-user" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Enter username" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Enter password" required>
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition transform active:scale-95">Sign In</button>
-            </form>
-
-            <!-- SETUP FORM -->
-            <form id="setup-form" class="space-y-5 hidden">
-                <div class="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm mb-4">
-                    <strong>First Time Setup:</strong> Create your master admin credentials.
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Username</label>
+                    <input type="text" id="login-user" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" required>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Master Username</label>
-                    <input type="text" id="setup-user" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" required>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
+                    <input type="password" id="login-pass" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" required>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Master Password</label>
-                    <input type="password" id="setup-pass" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition transform active:scale-95">Create System</button>
+                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-lg shadow-indigo-200">Sign In</button>
             </form>
         </div>
     </div>
 
-    <!-- === DASHBOARD LAYOUT === -->
-    <div id="dashboard-app" class="hidden min-h-screen flex">
+    <!-- === DASHBOARD APP === -->
+    <div id="dashboard-app" class="hidden flex w-full h-full">
         
-        <!-- SIDEBAR (Desktop) -->
-        <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white min-h-screen fixed left-0 top-0 z-30">
-            <div class="p-6 border-b border-slate-800 flex items-center gap-3">
-                <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                </div>
-                <span class="font-bold text-lg tracking-wide">SecretMsg</span>
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="bg-slate-900 text-slate-300 w-64 flex-shrink-0 flex flex-col transition-all duration-300 absolute md:relative z-40 h-full transform -translate-x-full md:translate-x-0">
+            <!-- Brand -->
+            <div class="h-16 flex items-center px-6 border-b border-slate-800">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-3 text-white font-bold">S</div>
+                <span class="font-bold text-white tracking-wide">Secure<span class="text-indigo-500">Platform</span></span>
             </div>
-            
-            <nav class="flex-1 p-4 space-y-2">
-                <button onclick="navTo('overview')" id="nav-overview" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                    Overview
+
+            <!-- Nav -->
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+                <button onclick="router.navigate('overview')" id="nav-overview" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 hover:text-white transition group">
+                    <svg class="w-5 h-5 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    <span class="font-medium">Overview</span>
                 </button>
-                <button onclick="navTo('create')" id="nav-create" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    New Secret
+                <button onclick="router.navigate('secrets')" id="nav-secrets" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 hover:text-white transition group">
+                    <svg class="w-5 h-5 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                    <span class="font-medium">Secrets Manager</span>
                 </button>
-                <button onclick="navTo('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    System
+                <div class="pt-4 pb-2">
+                    <p class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">System</p>
+                </div>
+                <button onclick="router.navigate('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 hover:text-white transition group">
+                    <svg class="w-5 h-5 opacity-70 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span class="font-medium">Settings</span>
                 </button>
             </nav>
-            
-            <div class="p-6 border-t border-slate-800">
-                <button onclick="handleLogout()" class="text-sm text-slate-400 hover:text-white flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Sign Out
-                </button>
+
+            <!-- User -->
+            <div class="p-4 border-t border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold" id="user-avatar">U</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate" id="user-name">Admin User</p>
+                        <button onclick="handleLogout()" class="text-xs text-slate-400 hover:text-white">Sign out</button>
+                    </div>
+                </div>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 md:ml-64 bg-gray-50 min-h-screen relative">
+        <!-- Overlay for mobile sidebar -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
+
+        <!-- MAIN AREA -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
             
-            <!-- MOBILE TOPBAR -->
-            <header class="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-20">
-                <div class="flex items-center gap-2 font-bold text-gray-800">
-                    <div class="w-8 h-8 bg-indigo-600 rounded text-white flex items-center justify-center">S</div>
-                    SecretMsg
+            <!-- TOP HEADER -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="md:hidden text-slate-500 hover:text-slate-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h2 id="page-title" class="text-xl font-bold text-slate-800">Overview</h2>
                 </div>
-                <button onclick="toggleMobileMenu()" class="text-gray-600 p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                </button>
+                <div class="flex items-center gap-4">
+                    <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-xs font-medium text-slate-500">SYSTEM OPERATIONAL</span>
+                </div>
             </header>
 
-            <!-- MOBILE MENU OVERLAY -->
-            <div id="mobile-menu" class="hidden md:hidden absolute top-16 left-0 w-full bg-white shadow-lg border-b border-gray-100 z-10 flex flex-col p-4 space-y-2">
-                <button onclick="navTo('overview'); toggleMobileMenu()" class="p-3 rounded bg-gray-50 text-left font-medium">Overview</button>
-                <button onclick="navTo('create'); toggleMobileMenu()" class="p-3 rounded bg-gray-50 text-left font-medium">New Secret</button>
-                <button onclick="navTo('settings'); toggleMobileMenu()" class="p-3 rounded bg-gray-50 text-left font-medium">System</button>
-                <button onclick="handleLogout()" class="p-3 text-red-600 text-left font-medium">Sign Out</button>
-            </div>
-
-            <div class="p-6 md:p-10 max-w-5xl mx-auto">
+            <!-- SCROLLABLE CONTENT -->
+            <div class="flex-1 overflow-y-auto p-6 md:p-8" id="main-content">
                 
-                <!-- VIEW 1: OVERVIEW -->
-                <div id="view-overview" class="hidden fade-in">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6">Dashboard Overview</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- Stats Card -->
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Active Secrets</h3>
-                            <div class="flex items-end gap-3">
-                                <span id="stat-active" class="text-4xl font-bold text-indigo-600">--</span>
-                                <span class="text-gray-500 mb-1 text-sm">currently live</span>
-                            </div>
+                <!-- VIEW: OVERVIEW -->
+                <div id="view-overview" class="space-y-6 hidden fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Secrets</p>
+                            <p id="stat-active" class="text-3xl font-bold text-slate-900 mt-2">--</p>
                         </div>
-                        <!-- Quick Action -->
-                        <div class="bg-indigo-600 p-6 rounded-xl shadow-lg shadow-indigo-200 text-white flex flex-col justify-between cursor-pointer hover:bg-indigo-700 transition" onclick="navTo('create')">
+                        <div class="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white p-6 rounded-xl shadow-lg shadow-indigo-200 col-span-1 md:col-span-2 flex items-center justify-between cursor-pointer transition hover:scale-[1.01]" onclick="router.navigate('secrets')">
                             <div>
-                                <h3 class="font-bold text-lg">Create New</h3>
-                                <p class="text-indigo-100 text-sm mt-1">Generate a secure link instantly.</p>
+                                <h3 class="text-xl font-bold">New Secure Message</h3>
+                                <p class="text-indigo-100 mt-1">Generate an encrypted, ephemeral link.</p>
                             </div>
-                            <div class="mt-4 self-end bg-white/20 p-2 rounded-full">
+                            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIEW 2: CREATE SECRET (Sequential Process) -->
-                <div id="view-create" class="hidden fade-in">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6">Create New Secret</h2>
-                    
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <!-- VIEW: SECRETS MANAGER -->
+                <div id="view-secrets" class="max-w-3xl mx-auto hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="p-6 border-b border-slate-100">
+                            <h3 class="text-lg font-bold text-slate-800">Compose Secret</h3>
+                            <p class="text-sm text-slate-500">Messages are encrypted and deleted after viewing.</p>
+                        </div>
                         
-                        <!-- Form Section -->
-                        <div id="create-step-1" class="p-6 md:p-8">
-                            <form id="create-form" class="space-y-6">
-                                <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-2">1. The Message</label>
-                                    <textarea id="secret-content" rows="4" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition text-lg" placeholder="Type your confidential message here..." required></textarea>
+                        <div class="p-6 space-y-6">
+                            <!-- FORM -->
+                            <form id="create-form">
+                                <div class="mb-6">
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Message Content</label>
+                                    <textarea id="secret-content" rows="4" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-indigo-500 outline-none transition" placeholder="Enter confidential information..." required></textarea>
                                 </div>
-
-                                <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                                    <label class="block text-sm font-bold text-gray-700 mb-4">2. Security Settings</label>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <span class="text-xs font-semibold text-gray-500 uppercase">Max Devices</span>
-                                            <input type="number" id="secret-views" value="1" min="1" class="w-full mt-2 p-3 bg-white border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
-                                            <p class="text-xs text-gray-400 mt-1">Link breaks after this many opens.</p>
-                                        </div>
-                                        <div>
-                                            <span class="text-xs font-semibold text-gray-500 uppercase">Self-Destruct Timer</span>
-                                            <select id="secret-timer" class="w-full mt-2 p-3 bg-white border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
-                                                <option value="0">Immediately after reading</option>
-                                                <option value="10">10 Seconds</option>
-                                                <option value="60">1 Minute</option>
-                                                <option value="3600">1 Hour</option>
-                                                <option value="86400">24 Hours</option>
-                                            </select>
-                                            <p class="text-xs text-gray-400 mt-1">Timer starts upon first view.</p>
-                                        </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">Max Views</label>
+                                        <input type="number" id="secret-views" value="1" min="1" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">Expiry Timer</label>
+                                        <select id="secret-timer" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none">
+                                            <option value="0">Burn Immediately</option>
+                                            <option value="60">1 Minute</option>
+                                            <option value="3600">1 Hour</option>
+                                            <option value="86400">24 Hours</option>
+                                        </select>
                                     </div>
                                 </div>
-
-                                <div class="pt-4">
-                                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-100 transition transform active:scale-[0.98] flex items-center justify-center gap-2">
-                                        <span>Generate Secure Link</span>
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md shadow-indigo-100 transition">
+                                        Generate Link
                                     </button>
                                 </div>
                             </form>
-                        </div>
 
-                        <!-- Success Section (Hidden initially) -->
-                        <div id="create-step-2" class="hidden p-8 bg-green-50 text-center">
-                            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <!-- RESULT -->
+                            <div id="secret-result" class="hidden mt-6 bg-emerald-50 border border-emerald-100 rounded-lg p-6 animate-fade-in-up">
+                                <div class="flex items-start gap-4">
+                                    <div class="text-emerald-500 mt-1">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h4 class="text-emerald-900 font-bold">Link Generated</h4>
+                                        <p class="text-emerald-700 text-sm mb-3">Copy the link below. It is now live.</p>
+                                        <div class="flex gap-2">
+                                            <input type="text" id="result-link" readonly class="flex-1 p-2 bg-white border border-emerald-200 rounded text-sm text-slate-600" onclick="this.select()">
+                                            <button onclick="copyToClip()" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700">Copy</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <h3 class="text-xl font-bold text-green-900 mb-2">Secret Link Ready</h3>
-                            <p class="text-green-700 mb-6">Share this link securely. It will verify the device and self-destruct according to your settings.</p>
-                            
-                            <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-green-200 shadow-sm mb-6">
-                                <input type="text" id="result-link" readonly class="flex-1 p-2 outline-none text-gray-600 font-mono text-sm" onclick="this.select()">
-                                <button onclick="copyLink()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Copy</button>
-                            </div>
-
-                            <button onclick="resetCreateForm()" class="text-green-700 font-medium underline">Create Another Secret</button>
                         </div>
-
                     </div>
                 </div>
 
-                <!-- VIEW 3: SETTINGS -->
-                <div id="view-settings" class="hidden fade-in">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6">System Settings</h2>
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-red-100">
+                <!-- VIEW: SETTINGS -->
+                <div id="view-settings" class="max-w-2xl mx-auto hidden fade-in">
+                    <div class="bg-white rounded-xl shadow-sm border border-red-100 p-8">
                         <h3 class="text-lg font-bold text-red-600 mb-2">Danger Zone</h3>
-                        <p class="text-gray-500 mb-6">Resetting the system will wipe all secrets, sessions, and the admin account. You will need to perform the setup process again.</p>
-                        <button onclick="handleReset()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 px-6 rounded-lg transition">
+                        <p class="text-slate-500 text-sm mb-6">Irreversible actions. Proceed with caution.</p>
+                        <button onclick="handleReset()" class="w-full py-3 bg-red-50 text-red-600 border border-red-200 rounded-lg font-bold hover:bg-red-100 transition">
                             Factory Reset System
                         </button>
                     </div>
@@ -235,224 +252,186 @@
         </main>
     </div>
 
-    <!-- === SECRET VIEWER APP (Separate Full Screen) === -->
-    <div id="viewer-app" class="hidden min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
-        
-        <!-- Background Ambient -->
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 z-10"></div>
-        
-        <div class="max-w-2xl w-full z-10 relative">
-            <div class="text-center mb-10">
-                <div class="inline-block p-3 bg-gray-800 rounded-2xl mb-4 border border-gray-700 shadow-2xl">
-                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                </div>
-                <h1 class="text-3xl font-bold tracking-tight">Secure Message</h1>
-            </div>
-
-            <div id="viewer-content" class="hidden bg-gray-800/50 backdrop-blur-xl border border-gray-700 p-8 rounded-2xl shadow-2xl">
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Decrypted Content</p>
-                <div class="prose prose-invert max-w-none">
-                    <p id="secret-text" class="text-xl md:text-2xl leading-relaxed font-mono break-words select-all">--</p>
-                </div>
-                <div id="viewer-timer-msg" class="mt-8 pt-4 border-t border-gray-700 text-right text-xs text-orange-400 font-mono hidden">
-                    Self-destruct timer active
-                </div>
-            </div>
-
-            <div id="viewer-error" class="hidden text-center py-12">
-                <div class="text-6xl mb-6">💥</div>
-                <h2 class="text-2xl font-bold text-red-400 mb-2">Message Destroyed</h2>
-                <p class="text-gray-400">This link is invalid, expired, or was already viewed.</p>
-                <a href="/" class="inline-block mt-8 text-indigo-400 hover:text-white underline transition">Create your own secret</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- === JAVASCRIPT === -->
+    <!-- === LOGIC === -->
     <script>
+        // CONFIG
         const API_URL = '/api';
         const urlParams = new URLSearchParams(window.location.search);
         const secretId = urlParams.get('id');
         let token = localStorage.getItem('admin_token');
 
+        // ROUTER
+        const router = {
+            navigate: (view) => {
+                // Update Sidebar Active State
+                document.querySelectorAll('nav button').forEach(b => {
+                    b.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 hover:text-white transition group text-slate-300";
+                    b.querySelector('svg').classList.add('opacity-70');
+                });
+                const activeBtn = document.getElementById(`nav-${view}`);
+                if(activeBtn) {
+                    activeBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 transition";
+                    activeBtn.querySelector('svg').classList.remove('opacity-70');
+                }
+
+                // Show View
+                ['overview', 'secrets', 'settings'].forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
+                document.getElementById(`view-${view}`).classList.remove('hidden');
+
+                // Update Header Title
+                const titles = { overview: 'Overview', secrets: 'Secrets Manager', settings: 'System Settings' };
+                document.getElementById('page-title').innerText = titles[view];
+
+                // Close mobile menu if open
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebar-overlay');
+                if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+                    toggleSidebar();
+                }
+
+                if(view === 'overview') updateStats();
+            }
+        };
+
         // --- INIT ---
-        window.onload = () => {
+        window.onload = async () => {
             if (secretId) {
-                // Viewer Mode
+                // VIEWER MODE
                 document.getElementById('init-loader').classList.add('hidden');
                 document.getElementById('viewer-app').classList.remove('hidden');
-                loadSecret(secretId);
+                await loadSecret(secretId);
             } else {
-                // Admin Mode
+                // ADMIN MODE
                 if (token) {
                     initDashboard();
                 } else {
-                    checkSetup();
+                    checkAuthStatus();
                 }
             }
         };
 
-        // --- API HELPER ---
+        // --- API UTILS ---
         async function apiCall(endpoint, method = 'GET', body = null) {
             const controller = new AbortController();
-            setTimeout(() => controller.abort(), 8000); // 8s timeout
+            setTimeout(() => controller.abort(), 8000); 
 
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-            
+
             try {
                 const res = await fetch(`${API_URL}${endpoint}`, {
                     method, headers, body: body ? JSON.stringify(body) : null, signal: controller.signal
                 });
                 
-                // Try parsing JSON, fallback to text if fails (usually robust backend handles this)
                 const text = await res.text();
                 let data;
-                try { data = JSON.parse(text); } catch(e) { data = {}; }
+                try { data = JSON.parse(text); } catch(e) { data = {}; } // Robust JSON handling
 
                 if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
                 return data;
             } catch (err) {
-                if (err.name === 'AbortError') throw new Error("Connection Timeout");
+                if (err.name === 'AbortError') throw new Error("Server Timeout");
                 throw err;
             }
         }
 
-        function showToast(msg, type = 'error') {
-            const toast = document.getElementById('toast');
-            const content = document.getElementById('toast-content');
-            document.getElementById('toast-msg').innerText = msg;
-            
-            // Animation styles
-            content.className = type === 'success' 
-                ? 'bg-emerald-600 text-white px-6 py-4 rounded-lg shadow-xl font-medium flex items-center gap-3'
-                : 'bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl font-medium flex items-center gap-3';
-            
-            toast.classList.remove('hidden');
-            setTimeout(() => {
-                toast.classList.remove('translate-y-[-100%]', 'opacity-0');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.add('translate-y-[-100%]', 'opacity-0');
-                setTimeout(() => toast.classList.add('hidden'), 300);
-            }, 3000);
+        function toast(msg, type='error') {
+            const el = document.createElement('div');
+            el.className = `px-4 py-3 rounded shadow-lg text-white text-sm font-medium animate-bounce ${type==='success'?'bg-emerald-600':'bg-red-600'}`;
+            el.innerText = msg;
+            document.getElementById('toast-container').appendChild(el);
+            setTimeout(() => el.remove(), 3000);
         }
 
-        // --- AUTH FLOWS ---
-        async function checkSetup() {
+        // --- AUTH ---
+        async function checkAuthStatus() {
             try {
                 const data = await apiCall('/check-setup');
                 document.getElementById('init-loader').classList.add('hidden');
                 document.getElementById('auth-app').classList.remove('hidden');
-                
                 if (data.setupRequired) {
                     document.getElementById('setup-form').classList.remove('hidden');
-                    document.getElementById('auth-title').innerText = "System Setup";
-                    document.getElementById('auth-subtitle').innerText = "Initialize your secure environment.";
                 } else {
                     document.getElementById('login-form').classList.remove('hidden');
                 }
-            } catch (err) {
-                showToast(err.message);
+            } catch (err) { toast(err.message); }
+        }
+
+        async function initDashboard() {
+            document.getElementById('init-loader').classList.add('hidden');
+            document.getElementById('auth-app').classList.add('hidden');
+            document.getElementById('dashboard-app').classList.remove('hidden');
+            
+            try {
+                const data = await apiCall('/dashboard');
+                document.getElementById('user-name').innerText = data.username || 'Admin';
+                router.navigate('overview');
+            } catch(e) {
+                if(e.message.includes('401') || e.message.includes('Session')) handleLogout();
             }
         }
 
+        // --- ACTIONS ---
         document.getElementById('login-form').onsubmit = async (e) => {
             e.preventDefault();
-            const u = document.getElementById('login-user').value;
-            const p = document.getElementById('login-pass').value;
             try {
+                const u = document.getElementById('login-user').value;
+                const p = document.getElementById('login-pass').value;
                 const data = await apiCall('/login', 'POST', { username: u, password: p });
                 token = data.token;
                 localStorage.setItem('admin_token', token);
-                document.getElementById('auth-app').classList.add('hidden');
                 initDashboard();
-            } catch(e) { showToast(e.message); }
+            } catch(e) { toast(e.message); }
         };
 
         document.getElementById('setup-form').onsubmit = async (e) => {
             e.preventDefault();
-            const u = document.getElementById('setup-user').value;
-            const p = document.getElementById('setup-pass').value;
             try {
+                const u = document.getElementById('setup-user').value;
+                const p = document.getElementById('setup-pass').value;
                 await apiCall('/setup', 'POST', { username: u, password: p });
-                showToast("System Initialized", 'success');
+                toast("Setup Complete", 'success');
                 setTimeout(() => location.reload(), 1000);
-            } catch(e) { showToast(e.message); }
+            } catch(e) { toast(e.message); }
         };
 
-        // --- DASHBOARD FLOWS ---
-        async function initDashboard() {
-            document.getElementById('init-loader').classList.add('hidden');
-            document.getElementById('dashboard-app').classList.remove('hidden');
-            navTo('overview');
-            updateStats();
-        }
+        document.getElementById('create-form').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const content = document.getElementById('secret-content').value;
+                const views = document.getElementById('secret-views').value;
+                const timer = document.getElementById('secret-timer').value;
+                const data = await apiCall('/secret', 'POST', { content, max_views: parseInt(views), expiry_seconds: parseInt(timer) });
+                
+                const link = `${window.location.origin}?id=${data.id}`;
+                document.getElementById('result-link').value = link;
+                document.getElementById('secret-result').classList.remove('hidden');
+                document.getElementById('create-form').reset();
+            } catch(e) { toast(e.message); }
+        };
 
-        function navTo(viewName) {
-            // Hide all views
-            ['overview', 'create', 'settings'].forEach(v => {
-                document.getElementById(`view-${v}`).classList.add('hidden');
-                // Reset Nav styles (desktop)
-                const navBtn = document.getElementById(`nav-${v}`);
-                if(navBtn) navBtn.className = "w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition";
-            });
-
-            // Show target
-            document.getElementById(`view-${viewName}`).classList.remove('hidden');
-            
-            // Active Nav style
-            const activeBtn = document.getElementById(`nav-${viewName}`);
-            if(activeBtn) activeBtn.className = "w-full flex items-center gap-3 px-4 py-3 bg-indigo-600 text-white rounded-lg shadow-lg shadow-indigo-900/20 transition";
-
-            if (viewName === 'overview') updateStats();
+        function copyToClip() {
+            const el = document.getElementById('result-link');
+            el.select();
+            navigator.clipboard.writeText(el.value);
+            toast("Link Copied", 'success');
         }
 
         async function updateStats() {
             try {
                 const data = await apiCall('/dashboard');
                 document.getElementById('stat-active').innerText = data.stats.active_secrets;
-            } catch(err) {
-                if(err.message.includes('401') || err.message.includes('Session')) handleLogout();
-            }
+            } catch(e) {}
         }
 
-        // --- CREATE FLOW ---
-        document.getElementById('create-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const content = document.getElementById('secret-content').value;
-            const views = document.getElementById('secret-views').value;
-            const timer = document.getElementById('secret-timer').value;
-            
+        async function loadSecret(id) {
             try {
-                const data = await apiCall('/secret', 'POST', { content, max_views: parseInt(views), expiry_seconds: parseInt(timer) });
-                
-                // Show Success State
-                document.getElementById('create-step-1').classList.add('hidden');
-                document.getElementById('create-step-2').classList.remove('hidden');
-                
-                const link = `${window.location.origin}?id=${data.id}`;
-                document.getElementById('result-link').value = link;
-                
-            } catch(e) { showToast(e.message); }
-        };
-
-        function resetCreateForm() {
-            document.getElementById('create-form').reset();
-            document.getElementById('create-step-2').classList.add('hidden');
-            document.getElementById('create-step-1').classList.remove('hidden');
-        }
-
-        function copyLink() {
-            const el = document.getElementById('result-link');
-            el.select();
-            navigator.clipboard.writeText(el.value);
-            showToast("Link Copied!", 'success');
-        }
-
-        function toggleMobileMenu() {
-            document.getElementById('mobile-menu').classList.toggle('hidden');
+                const data = await apiCall(`/secret/${id}`);
+                document.getElementById('viewer-content').classList.remove('hidden');
+                document.getElementById('secret-text').innerText = data.content;
+            } catch(e) {
+                document.getElementById('viewer-error').classList.remove('hidden');
+            }
         }
 
         function handleLogout() {
@@ -461,25 +440,21 @@
         }
 
         async function handleReset() {
-            if(!confirm("Are you absolutely sure? This cannot be undone.")) return;
-            try {
-                await apiCall('/reset', 'DELETE');
-                handleLogout();
-            } catch(e) { showToast(e.message); }
+            if(!confirm("Destroy all data?")) return;
+            try { await apiCall('/reset', 'DELETE'); handleLogout(); } catch(e) { toast(e.message); }
         }
 
-        // --- VIEWER FLOW ---
-        async function loadSecret(id) {
-            try {
-                const data = await apiCall(`/secret/${id}`);
-                document.getElementById('viewer-content').classList.remove('hidden');
-                document.getElementById('secret-text').innerText = data.content;
-                if (data.settings.expiry > 0) document.getElementById('viewer-timer-msg').classList.remove('hidden');
-            } catch(e) {
-                document.getElementById('viewer-error').classList.remove('hidden');
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
             }
         }
-
     </script>
 </body>
 </html>
