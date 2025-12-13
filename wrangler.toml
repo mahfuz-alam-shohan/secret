@@ -1,7 +1,11 @@
+name = "secret-messenger"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
 
-
-
-
+# Serve the HTML files from the 'public' folder
+[assets]
+directory = "public"
+binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
