@@ -37,7 +37,7 @@ export default {
     // CORS Headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
@@ -46,14 +46,12 @@ export default {
     }
 
     // --- API ROUTING BLOCK ---
-    // We catch ALL /api/ requests here to ensure we always return JSON
     if (path.startsWith('/api')) {
       try {
         // 1. CHECK SETUP (GET /api/check-setup)
         if (path === '/api/check-setup' && method === 'GET') {
           await initDB(env);
           const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
-          // D1 returns { count: 0 } or sometimes just 0 depending on version, handle both
           const count = countResult ? (countResult.count || 0) : 0;
           return new Response(JSON.stringify({ setupRequired: count === 0 }), { status: 200, headers: corsHeaders });
         }
@@ -63,19 +61,12 @@ export default {
           await initDB(env);
           
           const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
-          const count = countResult ? (countResult.count || 0) : 0;
-
-          if (count > 0) {
+          if ((countResult?.count || 0) > 0) {
              return new Response(JSON.stringify({ error: "Setup already completed." }), { status: 403, headers: corsHeaders });
           }
 
           let body;
-          try {
-            body = await request.json();
-          } catch(e) {
-            return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
-          }
-
+          try { body = await request.json(); } catch(e) { throw new Error("Invalid JSON"); }
           const { username, password } = body;
           
           if (!username || !password || password.length < 6) {
@@ -99,12 +90,11 @@ export default {
         // 3. LOGIN (POST /api/login)
         if (path === '/api/login' && method === 'POST') {
           let body;
-          try {
-             body = await request.json();
-          } catch(e) {
-             return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
-          }
+          try { body = await request.json(); } catch(e) { throw new Error("Invalid JSON"); }
           const { username, password } = body;
+
+          // Ensure DB is ready (in case of fresh reset)
+          await initDB(env);
 
           const user = await env.DB.prepare("SELECT * FROM admins WHERE username = ?").bind(username).first();
           
@@ -124,9 +114,7 @@ export default {
 
         // 4. DASHBOARD (GET /api/dashboard)
         if (path === '/api/dashboard' && method === 'GET') {
-          const authHeader = request.headers.get('Authorization');
-          const token = authHeader ? authHeader.split(' ')[1] : null;
-
+          const token = (request.headers.get('Authorization') || '').split(' ')[1];
           if (!token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
           const session = await env.DB.prepare(
@@ -152,21 +140,36 @@ export default {
           }), { status: 200, headers: corsHeaders });
         }
 
-        // If path starts with /api/ but matches none of the above
+        // 5. ULTIMATE RESET (DELETE /api/reset)
+        if (path === '/api/reset' && method === 'DELETE') {
+          const token = (request.headers.get('Authorization') || '').split(' ')[1];
+          if (!token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+
+          // Verify user is actually an admin before allowing destruction
+          const session = await env.DB.prepare(
+            "SELECT sessions.user_id FROM sessions WHERE sessions.id = ? AND sessions.expires_at > ?"
+          ).bind(token, Math.floor(Date.now() / 1000)).first();
+
+          if (!session) return new Response(JSON.stringify({ error: "Invalid Token" }), { status: 401, headers: corsHeaders });
+
+          // THE NUCLEAR OPTION: Drop tables
+          await env.DB.prepare("DROP TABLE IF EXISTS sessions").run();
+          await env.DB.prepare("DROP TABLE IF EXISTS admins").run();
+
+          return new Response(JSON.stringify({ message: "System Reset Complete. Tables Dropped." }), { status: 200, headers: corsHeaders });
+        }
+
         return new Response(JSON.stringify({ error: "API Endpoint Not Found" }), { status: 404, headers: corsHeaders });
 
       } catch (err) {
-        // CATCH-ALL FOR SERVER ERRORS
         return new Response(JSON.stringify({ error: "Server Error: " + err.message }), { status: 500, headers: corsHeaders });
       }
     }
 
     // --- STATIC ASSETS ---
-    // Only fall through here if NOT an API call
     try {
       const asset = await env.ASSETS.fetch(request);
       if (asset.status === 404) {
-         // Return a friendly 404 page or text if asset missing
          return new Response("404 Page Not Found", { status: 404 });
       }
       return asset;
