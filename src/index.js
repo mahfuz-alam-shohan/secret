@@ -48,7 +48,7 @@ export default {
     // --- API ROUTING BLOCK ---
     if (path.startsWith('/api')) {
       try {
-        // 1. CHECK SETUP (GET /api/check-setup)
+        // 1. CHECK SETUP
         if (path === '/api/check-setup' && method === 'GET') {
           await initDB(env);
           const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
@@ -56,10 +56,9 @@ export default {
           return new Response(JSON.stringify({ setupRequired: count === 0 }), { status: 200, headers: corsHeaders });
         }
 
-        // 2. SETUP (POST /api/setup)
+        // 2. SETUP
         if (path === '/api/setup' && method === 'POST') {
           await initDB(env);
-          
           const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
           if ((countResult?.count || 0) > 0) {
              return new Response(JSON.stringify({ error: "Setup already completed." }), { status: 403, headers: corsHeaders });
@@ -87,14 +86,13 @@ export default {
           }
         }
 
-        // 3. LOGIN (POST /api/login)
+        // 3. LOGIN
         if (path === '/api/login' && method === 'POST') {
           let body;
           try { body = await request.json(); } catch(e) { throw new Error("Invalid JSON"); }
           const { username, password } = body;
 
-          // Ensure DB is ready (in case of fresh reset)
-          await initDB(env);
+          await initDB(env); // Ensure DB exists
 
           const user = await env.DB.prepare("SELECT * FROM admins WHERE username = ?").bind(username).first();
           
@@ -105,23 +103,35 @@ export default {
           const sessionId = generateSessionId();
           const expiresAt = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
 
-          await env.DB.prepare(
+          const insert = await env.DB.prepare(
             "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)"
           ).bind(sessionId, user.id, expiresAt).run();
+
+          if (!insert.success) {
+             return new Response(JSON.stringify({ error: "Failed to create session in DB" }), { status: 500, headers: corsHeaders });
+          }
 
           return new Response(JSON.stringify({ token: sessionId, message: "Login successful" }), { status: 200, headers: corsHeaders });
         }
 
-        // 4. DASHBOARD (GET /api/dashboard)
+        // 4. DASHBOARD
         if (path === '/api/dashboard' && method === 'GET') {
-          const token = (request.headers.get('Authorization') || '').split(' ')[1];
-          if (!token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+          const auth = request.headers.get('Authorization');
+          const token = auth ? auth.split(' ')[1] : null;
 
+          if (!token) {
+              return new Response(JSON.stringify({ error: "Authorization header missing" }), { status: 401, headers: corsHeaders });
+          }
+
+          // Use a simple query first to verify connectivity
           const session = await env.DB.prepare(
             "SELECT sessions.*, admins.username FROM sessions JOIN admins ON sessions.user_id = admins.id WHERE sessions.id = ? AND sessions.expires_at > ?"
           ).bind(token, Math.floor(Date.now() / 1000)).first();
 
-          if (!session) return new Response(JSON.stringify({ error: "Invalid Token" }), { status: 401, headers: corsHeaders });
+          if (!session) {
+             // Debug: check if session exists but expired?
+             return new Response(JSON.stringify({ error: "Session not found in DB or expired" }), { status: 401, headers: corsHeaders });
+          }
 
           let bucketObjects = [];
           if (env.BUCKET) {
@@ -140,23 +150,21 @@ export default {
           }), { status: 200, headers: corsHeaders });
         }
 
-        // 5. ULTIMATE RESET (DELETE /api/reset)
+        // 5. ULTIMATE RESET
         if (path === '/api/reset' && method === 'DELETE') {
           const token = (request.headers.get('Authorization') || '').split(' ')[1];
           if (!token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
-          // Verify user is actually an admin before allowing destruction
           const session = await env.DB.prepare(
             "SELECT sessions.user_id FROM sessions WHERE sessions.id = ? AND sessions.expires_at > ?"
           ).bind(token, Math.floor(Date.now() / 1000)).first();
 
           if (!session) return new Response(JSON.stringify({ error: "Invalid Token" }), { status: 401, headers: corsHeaders });
 
-          // THE NUCLEAR OPTION: Drop tables
           await env.DB.prepare("DROP TABLE IF EXISTS sessions").run();
           await env.DB.prepare("DROP TABLE IF EXISTS admins").run();
 
-          return new Response(JSON.stringify({ message: "System Reset Complete. Tables Dropped." }), { status: 200, headers: corsHeaders });
+          return new Response(JSON.stringify({ message: "System Reset Complete." }), { status: 200, headers: corsHeaders });
         }
 
         return new Response(JSON.stringify({ error: "API Endpoint Not Found" }), { status: 404, headers: corsHeaders });
@@ -166,12 +174,9 @@ export default {
       }
     }
 
-    // --- STATIC ASSETS ---
     try {
       const asset = await env.ASSETS.fetch(request);
-      if (asset.status === 404) {
-         return new Response("404 Page Not Found", { status: 404 });
-      }
+      if (asset.status === 404) return new Response("404 Page Not Found", { status: 404 });
       return asset;
     } catch (e) {
       return new Response("Not Found", { status: 404 });
