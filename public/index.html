@@ -30,13 +30,11 @@
     <!-- Auth Container -->
     <div id="auth-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden hidden fade-in">
         <div class="h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-        
         <div class="p-8">
             <!-- Login View -->
             <div id="login-view" class="hidden">
                 <h1 class="text-3xl font-bold mb-2 text-center text-gray-900">Welcome Back</h1>
                 <p class="text-center text-gray-500 text-sm mb-8">Please enter your credentials to continue.</p>
-                
                 <form id="login-form" class="space-y-5">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Username</label>
@@ -49,17 +47,12 @@
                     <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold shadow-lg shadow-indigo-200 transition-all transform active:scale-95">Sign In</button>
                 </form>
             </div>
-
             <!-- Setup View -->
             <div id="setup-view" class="hidden">
                 <div class="text-center mb-6">
-                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
                     <h1 class="text-2xl font-bold text-gray-900">System Setup</h1>
                     <p class="text-gray-500 text-sm">Create the master administrator account.</p>
                 </div>
-
                 <form id="setup-form" class="space-y-5">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Master Username</label>
@@ -77,7 +70,6 @@
 
     <!-- Dashboard -->
     <div id="dashboard-container" class="w-full max-w-5xl hidden fade-in">
-        <!-- Header -->
         <header class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-gray-900">Admin<span class="text-indigo-600">Console</span></h2>
@@ -85,14 +77,11 @@
             </div>
             <button id="logout-btn" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center gap-2">
                 <span>Logout</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
             </button>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Sidebar / Stats -->
             <div class="space-y-6">
-                 <!-- Status Card -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">System Status</h3>
                     <div class="flex items-center gap-3 mb-2">
@@ -104,24 +93,17 @@
                          <span class="text-2xl font-bold ml-2 text-indigo-600 block" id="stat-count">--</span>
                     </div>
                 </div>
-
-                <!-- Danger Zone -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
                     <h3 class="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Danger Zone</h3>
-                    <p class="text-xs text-gray-500 mb-4">This action will delete all data, including your admin account, and reset the application.</p>
-                    <button id="reset-btn" class="w-full py-2 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-colors">
-                        Ultimate Reset
-                    </button>
+                    <p class="text-xs text-gray-500 mb-4">This action will delete all data and reset the application.</p>
+                    <button id="reset-btn" class="w-full py-2 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-colors">Ultimate Reset</button>
                 </div>
             </div>
-
-            <!-- Main Content / Files -->
             <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col">
                 <div class="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h3 class="text-lg font-bold text-gray-800">Stored Secrets</h3>
                     <span class="bg-blue-50 text-blue-600 text-xs px-3 py-1 rounded-full font-medium">R2 Bucket</span>
                 </div>
-                
                 <div class="p-6 flex-grow">
                     <ul id="bucket-list" class="space-y-3">
                         <li class="text-gray-400 text-sm italic text-center py-8">Scanning storage container...</li>
@@ -142,7 +124,6 @@
 
         let token = localStorage.getItem('admin_token');
 
-        // Init
         window.onload = async () => {
             if (token) {
                 await loadDashboard();
@@ -151,56 +132,47 @@
             }
         };
 
-        // UI Helpers
         function showNotify(msg, type = 'success') {
             const colors = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
             notification.className = `fixed top-5 right-5 px-6 py-4 rounded-lg shadow-xl text-white font-medium z-50 transition-all transform duration-300 ${colors}`;
             notification.innerText = msg;
             notification.classList.remove('hidden');
-            setTimeout(() => {
-                notification.classList.add('hidden');
-            }, 5000); // Increased duration to read errors
+            setTimeout(() => { notification.classList.add('hidden'); }, 4000);
         }
 
         async function apiCall(endpoint, method = 'GET', body = null) {
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-
             const config = { method, headers };
             if (body) config.body = JSON.stringify(body);
 
             let res;
+            try { res = await fetch(`${API_URL}${endpoint}`, config); } 
+            catch (err) { throw new Error("Network connection failed"); }
+
+            // FORCE READ: Try JSON, fallback to text, never just fail on header check
+            let data;
+            const text = await res.text();
             try {
-                res = await fetch(`${API_URL}${endpoint}`, config);
-            } catch (err) {
-                throw new Error("Network connection failed");
+                data = JSON.parse(text);
+            } catch(e) {
+                // If not JSON, use text or generic error
+                if (!res.ok) throw new Error(`Server Error (${res.status}): ${text.substring(0, 50)}`);
+                return {}; // Success but no JSON
             }
 
-            const contentType = res.headers.get("content-type");
-            
-            if (!contentType || !contentType.includes("application/json")) {
-                 if(!res.ok) throw new Error(`Server Error (${res.status})`);
-                 return {}; 
-            }
-
-            const data = await res.json();
             if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
             return data;
         }
-
-        // --- Core Logic ---
 
         async function checkSystemStatus() {
             loading.classList.remove('hidden');
             authContainer.classList.add('hidden');
             try {
-                // If token exists, we are already checking dashboard, so skip this unless token is null
-                if (token) return;
-
+                if (token) return; // Skip if we have token
                 const data = await apiCall('/check-setup');
                 loading.classList.add('hidden');
                 authContainer.classList.remove('hidden');
-                
                 if (data.setupRequired) {
                     setupView.classList.remove('hidden');
                     loginView.classList.add('hidden');
@@ -208,9 +180,7 @@
                     setupView.classList.add('hidden');
                     loginView.classList.remove('hidden');
                 }
-            } catch (err) {
-                loading.innerText = "System Error: " + err.message;
-            }
+            } catch (err) { loading.innerText = "System Error: " + err.message; }
         }
 
         async function loadDashboard() {
@@ -224,28 +194,17 @@
                 
                 const list = document.getElementById('bucket-list');
                 const files = data.bucket_files || [];
-                
                 if (files.length > 0) {
-                    list.innerHTML = files.map(f => `
-                        <li class='flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-white hover:shadow-sm transition-all'>
-                            <div class="text-indigo-500">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            </div>
-                            <span class="text-sm font-medium text-gray-700">${f}</span>
-                        </li>
-                    `).join('');
+                    list.innerHTML = files.map(f => `<li class='p-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-700'>${f}</li>`).join('');
                 } else {
-                    list.innerHTML = `<li class="text-center text-gray-400 py-4">No secrets found in bucket</li>`;
+                    list.innerHTML = `<li class="text-center text-gray-400 py-4">No secrets found</li>`;
                 }
-
             } catch (err) {
-                // STOP THE LOOP: We do NOT auto-logout here anymore.
-                // We show the error so you can see why it failed.
                 console.error("Dashboard Load Error:", err);
-                showNotify("Dashboard Error: " + err.message, 'error');
+                showNotify("Session Expired: " + err.message, 'error');
                 
-                // Only logout if explicitly Unauthorized (401)
-                if (err.message.includes("401") || err.message.includes("Unauthorized") || err.message.includes("Session expired")) {
+                // Auto-Logout only on real auth errors
+                if (err.message.includes("401") || err.message.includes("Session") || err.message.includes("expired")) {
                      setTimeout(() => {
                          localStorage.removeItem('admin_token');
                          token = null;
@@ -254,8 +213,6 @@
                 }
             }
         }
-
-        // --- Event Listeners ---
 
         document.getElementById('login-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -275,13 +232,9 @@
             const p = document.getElementById('setup-pass').value;
             try {
                 await apiCall('/setup', 'POST', { username: u, password: p });
-                showNotify("Setup Complete! Please Login.", "success");
-                
-                // Force check status to switch to login view
+                showNotify("Setup Complete!", "success");
                 token = null; 
                 await checkSystemStatus();
-                
-                // Prefill login
                 document.getElementById('login-user').value = u;
             } catch (err) { showNotify(err.message, 'error'); }
         };
@@ -293,19 +246,14 @@
         };
 
         document.getElementById('reset-btn').onclick = async () => {
-            if (!confirm("⚠️ ULTIMATE RESET WARNING ⚠️\n\nThis will delete your account and all data. You will be logged out immediately.")) {
-                return;
-            }
-
+            if (!confirm("⚠️ ULTIMATE RESET WARNING ⚠️\n\nDelete all data?")) return;
             try {
                 await apiCall('/reset', 'DELETE');
-                alert("System Reset Successfully.");
+                alert("System Reset.");
                 localStorage.removeItem('admin_token');
                 token = null;
                 location.reload();
-            } catch (err) {
-                showNotify("Reset Failed: " + err.message, 'error');
-            }
+            } catch (err) { showNotify(err.message, 'error'); }
         };
     </script>
 </body>
