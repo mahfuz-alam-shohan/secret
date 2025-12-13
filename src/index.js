@@ -34,10 +34,8 @@ async function safeSelectAll(env, query, ...args) {
 
 // --- INIT DB & AUTO-UPGRADE SCHEME ---
 async function initDB(env) {
-    // 1. SELF-HEALING: Check for old schema and Nuke it if necessary
+    // 1. SELF-HEALING: Check for old schema
     try {
-        // Try to select a new column. If this fails, we know we have the old table.
-        // We catch the error and DROP the table so the next step creates it fresh.
         await env.DB.prepare("SELECT is_active FROM secrets LIMIT 1").first();
     } catch (e) {
         if (e.message && e.message.includes("no such column")) {
@@ -46,7 +44,7 @@ async function initDB(env) {
         }
     }
 
-    // 2. Ensure Tables Exist (Standard)
+    // 2. Ensure Tables Exist
     const queries = [
         `CREATE TABLE IF NOT EXISTS admins (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,21 +97,39 @@ export default {
         const path = url.pathname;
         const method = request.method;
 
+        // CORS
         const corsHeaders = {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Custom-Auth',
             'Content-Type': 'application/json'
         };
 
         if (method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+        // --- FILE SERVING (R2) ---
+        // Route: /file/key-name
+        if (path.startsWith('/file/')) {
+            const key = path.replace('/file/', '');
+            if (!env.BUCKET) return new Response("Storage Not Configured", { status: 500 });
+            
+            const object = await env.BUCKET.get(key);
+            if (!object) return new Response("File Not Found", { status: 404 });
+
+            const headers = new Headers();
+            object.writeHttpMetadata(headers);
+            headers.set('etag', object.httpEtag);
+            
+            return new Response(object.body, { headers });
+        }
+
         if (path.startsWith('/api')) {
             try {
-                // Ensure DB is healthy before every API call
                 await initDB(env);
 
-                // 1. PUBLIC: GET SECRET
+                // --- PUBLIC API ---
+
+                // 1. GET SECRET
                 const secretMatch = path.match(/^\/api\/secret\/(.+)$/);
                 if (secretMatch && method === 'GET') {
                     const secretId = secretMatch[1];
@@ -124,21 +140,17 @@ export default {
                     if (!secret) return new Response(JSON.stringify({ error: "Message not found." }), { status: 404, headers: corsHeaders });
 
                     // Log Access
-                    const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'Unknown';
+                    const ip = request.headers.get('CF-Connecting-IP') || 'Unknown';
                     const country = request.cf?.country || 'Unknown';
                     const city = request.cf?.city || 'Unknown';
                     const ua = request.headers.get('User-Agent') || 'Unknown';
                     const device = ua.includes('Mobile') ? 'Mobile' : 'Desktop';
                     
-                    await safeQuery(env, 
-                        "INSERT INTO access_logs (secret_id, ip_address, country, city, user_agent, device_type) VALUES (?, ?, ?, ?, ?, ?)",
-                        secretId, ip, country, city, ua, device
-                    );
+                    await safeQuery(env, "INSERT INTO access_logs (secret_id, ip_address, country, city, user_agent, device_type) VALUES (?, ?, ?, ?, ?, ?)", secretId, ip, country, city, ua, device);
 
-                    // Validate
+                    // Validation & Burning Logic
                     if (secret.is_active === 0) return new Response(JSON.stringify({ error: "Message has been burned." }), { status: 410, headers: corsHeaders });
 
-                    // Time Check
                     if (secret.first_viewed_at !== null && secret.expiry_seconds > 0) {
                         if ((now - secret.first_viewed_at) > secret.expiry_seconds) {
                             await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
@@ -146,7 +158,6 @@ export default {
                         }
                     }
 
-                    // View Count Check
                     if (secret.view_count >= secret.max_views) {
                         await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
                         return new Response(JSON.stringify({ error: "Max views reached." }), { status: 410, headers: corsHeaders });
@@ -159,7 +170,6 @@ export default {
                         await safeQuery(env, "UPDATE secrets SET view_count = view_count + 1 WHERE id = ?", secretId);
                     }
 
-                    // Burn check for next time
                     if (secret.view_count + 1 > secret.max_views) {
                          await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
                     }
@@ -172,6 +182,8 @@ export default {
                     }), { status: 200, headers: corsHeaders });
                 }
 
+                // --- ADMIN API ---
+                
                 // 2. CHECK SETUP
                 if (path === '/api/check-setup' && method === 'GET') {
                     const res = await safeSelect(env, "SELECT COUNT(*) as count FROM admins");
@@ -182,10 +194,7 @@ export default {
                 if (path === '/api/setup' && method === 'POST') {
                     const res = await safeSelect(env, "SELECT COUNT(*) as count FROM admins");
                     if ((res?.count || 0) > 0) return new Response(JSON.stringify({ error: "Setup already done." }), { status: 403, headers: corsHeaders });
-
                     const body = await request.json();
-                    if (!body.username || !body.password) throw new Error("Missing fields");
-
                     const salt = generateSalt();
                     const hash = await hashPassword(body.password, salt);
                     await safeQuery(env, "INSERT INTO admins (username, password_hash, salt) VALUES (?, ?, ?)", body.username, hash, salt);
@@ -204,71 +213,79 @@ export default {
                     return new Response(JSON.stringify({ token: token, message: "OK" }), { status: 200, headers: corsHeaders });
                 }
 
-                // --- AUTH CHECK ---
+                // --- AUTH MIDDLEWARE FOR PROTECTED ROUTES ---
                 const authHeader = request.headers.get('Authorization');
                 const token = authHeader ? authHeader.split(' ')[1] : null;
-                if (!token) return new Response(JSON.stringify({ error: "No Token" }), { status: 401, headers: corsHeaders });
+                
+                // We allow access to upload without token if it's protected by other means, 
+                // but for security, let's assume uploads need admin token OR we make it public (risky).
+                // Let's require token for uploads.
+                
+                // 5. UPLOAD FILE (Protected)
+                if (path === '/api/upload' && method === 'POST') {
+                     if (!token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+                     // Verify Token
+                     const session = await safeSelect(env, "SELECT id FROM sessions WHERE id = ? AND expires_at > ?", token, Math.floor(Date.now() / 1000));
+                     if (!session) return new Response(JSON.stringify({ error: "Invalid Session" }), { status: 401, headers: corsHeaders });
 
+                     if (!env.BUCKET) return new Response(JSON.stringify({ error: "R2 Bucket Not Configured" }), { status: 500, headers: corsHeaders });
+
+                     const contentType = request.headers.get("Content-Type") || "application/octet-stream";
+                     const filename = request.headers.get("X-File-Name") || `upload-${crypto.randomUUID()}`;
+                     const key = `${crypto.randomUUID()}-${filename}`;
+                     
+                     // Put into R2
+                     await env.BUCKET.put(key, request.body, {
+                         httpMetadata: { contentType: contentType }
+                     });
+
+                     return new Response(JSON.stringify({ url: `/file/${key}`, key: key }), { status: 200, headers: corsHeaders });
+                }
+
+                if (!token) return new Response(JSON.stringify({ error: "No Token" }), { status: 401, headers: corsHeaders });
+                
+                // Verify Session for remaining routes
                 const session = await safeSelect(env, "SELECT sessions.*, admins.username FROM sessions JOIN admins ON sessions.user_id = admins.id WHERE sessions.id = ? AND sessions.expires_at > ?", token, Math.floor(Date.now() / 1000));
                 if (!session) return new Response(JSON.stringify({ error: "Invalid Session" }), { status: 401, headers: corsHeaders });
 
-                // 5. DASHBOARD STATS
+                // 6. DASHBOARD
                 if (path === '/api/dashboard' && method === 'GET') {
                     const active = await safeSelect(env, "SELECT COUNT(*) as count FROM secrets WHERE is_active = 1");
                     const burned = await safeSelect(env, "SELECT COUNT(*) as count FROM secrets WHERE is_active = 0");
                     const logs = await safeSelect(env, "SELECT COUNT(*) as count FROM access_logs");
-                    return new Response(JSON.stringify({ 
-                        username: session.username,
-                        stats: { 
-                            active_secrets: active?.count || 0,
-                            burned_secrets: burned?.count || 0,
-                            total_views: logs?.count || 0
-                        }
-                    }), { status: 200, headers: corsHeaders });
+                    return new Response(JSON.stringify({ username: session.username, stats: { active_secrets: active?.count || 0, burned_secrets: burned?.count || 0, total_views: logs?.count || 0 } }), { status: 200, headers: corsHeaders });
                 }
 
-                // 6. CREATE SECRET
+                // 7. CREATE SECRET
                 if (path === '/api/secret' && method === 'POST') {
                     const body = await request.json();
                     const id = crypto.randomUUID();
                     const type = body.type || 'text';
                     const metadata = JSON.stringify(body.metadata || {});
-                    await safeQuery(env, 
-                        "INSERT INTO secrets (id, type, content, metadata, max_views, expiry_seconds) VALUES (?, ?, ?, ?, ?, ?)", 
-                        id, type, body.content, metadata, body.max_views || 1, body.expiry_seconds || 0
-                    );
+                    await safeQuery(env, "INSERT INTO secrets (id, type, content, metadata, max_views, expiry_seconds) VALUES (?, ?, ?, ?, ?, ?)", id, type, body.content, metadata, body.max_views || 1, body.expiry_seconds || 0);
                     return new Response(JSON.stringify({ id: id }), { status: 201, headers: corsHeaders });
                 }
 
-                // 7. GET ALL SECRETS
+                // 8. LIST & LOGS
                 if (path === '/api/secrets-list' && method === 'GET') {
                     const rows = await safeSelectAll(env, "SELECT id, type, created_at, view_count, max_views, is_active FROM secrets ORDER BY created_at DESC LIMIT 50");
                     return new Response(JSON.stringify({ secrets: rows?.results || [] }), { status: 200, headers: corsHeaders });
                 }
-
-                // 8. LOGS
-                const logMatch = path.match(/^\/api\/secret\/logs\/(.+)$/);
-                if (logMatch && method === 'GET') {
-                    const secretId = logMatch[1];
-                    const logs = await safeSelectAll(env, "SELECT * FROM access_logs WHERE secret_id = ? ORDER BY viewed_at DESC", secretId);
+                if (path.match(/^\/api\/secret\/logs\/(.+)$/) && method === 'GET') {
+                    const logs = await safeSelectAll(env, "SELECT * FROM access_logs WHERE secret_id = ? ORDER BY viewed_at DESC", path.split('/').pop());
                     return new Response(JSON.stringify({ logs: logs?.results || [] }), { status: 200, headers: corsHeaders });
                 }
 
-                // 9. DELETE
-                const deleteMatch = path.match(/^\/api\/secret\/(.+)$/);
-                if (deleteMatch && method === 'DELETE') {
-                    const secretId = deleteMatch[1];
-                    await safeQuery(env, "DELETE FROM secrets WHERE id = ?", secretId);
-                    await safeQuery(env, "DELETE FROM access_logs WHERE secret_id = ?", secretId);
+                // 9. DELETE & RESET
+                if (path.match(/^\/api\/secret\/(.+)$/) && method === 'DELETE') {
+                    const sid = path.split('/').pop();
+                    await safeQuery(env, "DELETE FROM secrets WHERE id = ?", sid);
+                    await safeQuery(env, "DELETE FROM access_logs WHERE secret_id = ?", sid);
                     return new Response(JSON.stringify({ message: "Deleted" }), { status: 200, headers: corsHeaders });
                 }
-
-                // 10. RESET
                 if (path === '/api/reset' && method === 'DELETE') {
-                    // Full Nuke
                     await safeQuery(env, "DROP TABLE IF EXISTS secrets");
                     await safeQuery(env, "DROP TABLE IF EXISTS access_logs");
-                    // We don't drop admins/sessions so you don't get locked out
                     return new Response(JSON.stringify({ message: "Data Cleared" }), { status: 200, headers: corsHeaders });
                 }
 
@@ -278,10 +295,6 @@ export default {
             }
         }
 
-        try {
-            return await env.ASSETS.fetch(request);
-        } catch (e) {
-            return new Response("Frontend Not Found", { status: 404 });
-        }
+        try { return await env.ASSETS.fetch(request); } catch (e) { return new Response("Frontend Not Found", { status: 404 }); }
     }
 };
