@@ -1,0 +1,13 @@
+
+
+
+
+
+[[d1_databases]]
+binding = "DB"
+database_name = "secret"
+database_id = "2e8b8482-f6bd-43ee-bdf9-7394a23cd76e"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "secret"
