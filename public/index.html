@@ -7,155 +7,211 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .hidden { display: none; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen flex flex-col items-center justify-center">
 
     <!-- Notifications -->
-    <div id="notification" class="fixed top-5 right-5 hidden p-4 rounded shadow-lg text-white"></div>
+    <div id="notification" class="fixed top-5 right-5 hidden p-4 rounded shadow-lg text-white z-50"></div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="text-emerald-400 font-mono animate-pulse">Initializing Secure System...</div>
 
     <!-- Auth Container -->
-    <div id="auth-container" class="w-full max-w-md p-8 bg-gray-800 rounded-lg shadow-xl border border-gray-700">
-        <h1 class="text-3xl font-bold mb-6 text-center text-emerald-400">Admin Access</h1>
+    <div id="auth-container" class="w-full max-w-md p-8 bg-gray-800 rounded-lg shadow-xl border border-gray-700 hidden fade-in">
         
-        <!-- Login Form -->
-        <form id="login-form" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium mb-1">Username</label>
-                <input type="text" id="login-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">Password</label>
-                <input type="password" id="login-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
-            </div>
-            <button type="submit" class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 rounded font-bold transition">Log In</button>
-            <p class="text-center text-sm text-gray-400 mt-4">
-                No account? <a href="#" id="show-register" class="text-emerald-400 hover:underline">Create one</a>
-            </p>
-        </form>
+        <!-- Login View -->
+        <div id="login-view" class="hidden">
+            <h1 class="text-3xl font-bold mb-6 text-center text-emerald-400">System Access</h1>
+            <p class="text-center text-gray-400 text-sm mb-6">Enter your credentials to access the secure dashboard.</p>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Username</label>
+                    <input type="text" id="login-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" id="login-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
+                </div>
+                <button type="submit" class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 rounded font-bold transition shadow-lg shadow-emerald-900/50">Log In</button>
+            </form>
+        </div>
 
-        <!-- Register Form (Hidden by default) -->
-        <form id="register-form" class="space-y-4 hidden">
-            <div>
-                <label class="block text-sm font-medium mb-1">New Username</label>
-                <input type="text" id="reg-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
-            </div>
-            <div>
-                <label class="block text-sm font-medium mb-1">New Password</label>
-                <input type="password" id="reg-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
-            </div>
-            <button type="submit" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 rounded font-bold transition">Create Account</button>
-            <p class="text-center text-sm text-gray-400 mt-4">
-                <a href="#" id="show-login" class="text-emerald-400 hover:underline">Back to Login</a>
-            </p>
-        </form>
+        <!-- Setup View (Only shown if no admins exist) -->
+        <div id="setup-view" class="hidden">
+            <h1 class="text-3xl font-bold mb-2 text-center text-blue-400">First Time Setup</h1>
+            <p class="text-center text-gray-400 text-sm mb-6">No admin account found. Please create the master account.</p>
+
+            <form id="setup-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Master Username</label>
+                    <input type="text" id="setup-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Master Password</label>
+                    <input type="password" id="setup-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none" minlength="6" required>
+                </div>
+                <button type="submit" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 rounded font-bold transition shadow-lg shadow-blue-900/50">Create Master Account</button>
+            </form>
+        </div>
+
     </div>
 
-    <!-- Dashboard (Hidden by default) -->
-    <div id="dashboard-container" class="w-full max-w-4xl p-8 hidden">
+    <!-- Dashboard -->
+    <div id="dashboard-container" class="w-full max-w-4xl p-8 hidden fade-in">
         <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-700">
-            <h2 class="text-2xl font-bold text-white">Dashboard</h2>
-            <button id="logout-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">Logout</button>
+            <h2 class="text-2xl font-bold text-white tracking-wide">SECURE<span class="text-emerald-400">DASH</span></h2>
+            <button id="logout-btn" class="px-4 py-2 bg-red-900/80 hover:bg-red-700 border border-red-700 rounded text-sm transition">Terminate Session</button>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Stats Card -->
-            <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+            <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 text-6xl">📊</div>
                 <h3 class="text-xl font-semibold mb-4 text-emerald-400">System Status</h3>
-                <p id="welcome-msg" class="mb-2">Loading...</p>
-                <div class="text-4xl font-bold mt-4" id="stat-count">--</div>
-                <div class="text-gray-400 text-sm">Active Sessions</div>
+                <p id="welcome-msg" class="mb-2 text-lg">Loading...</p>
+                <div class="mt-4">
+                    <span class="text-gray-400 text-sm">Active Sessions:</span>
+                    <span class="text-2xl font-bold ml-2 text-white" id="stat-count">--</span>
+                </div>
             </div>
 
             <!-- Bucket File List -->
             <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
-                <h3 class="text-xl font-semibold mb-4 text-blue-400">R2 Bucket Files</h3>
-                <ul id="bucket-list" class="space-y-2 text-sm text-gray-300">
-                    <li>Loading files...</li>
+                <h3 class="text-xl font-semibold mb-4 text-blue-400">Stored Secrets (Bucket)</h3>
+                <ul id="bucket-list" class="space-y-2 text-sm text-gray-300 max-h-48 overflow-y-auto">
+                    <li class="italic text-gray-500">Scanning storage...</li>
                 </ul>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuration
-        const API_URL = '/api'; // Assumes served from same domain or configured proxy
-
-        // DOM Elements
+        const API_URL = '/api';
+        
+        // Elements
+        const loading = document.getElementById('loading');
         const authContainer = document.getElementById('auth-container');
+        const loginView = document.getElementById('login-view');
+        const setupView = document.getElementById('setup-view');
         const dashboardContainer = document.getElementById('dashboard-container');
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
         const notification = document.getElementById('notification');
 
         // State
         let token = localStorage.getItem('admin_token');
 
-        // Init
-        if (token) {
-            loadDashboard();
+        // Initialization
+        window.onload = async () => {
+            if (token) {
+                // Try to restore session
+                try {
+                    await loadDashboard();
+                    return; 
+                } catch(e) {
+                    console.log("Token invalid");
+                    token = null;
+                    localStorage.removeItem('admin_token');
+                }
+            }
+            // If no token, check system status
+            checkSystemStatus();
+        };
+
+        async function checkSystemStatus() {
+            loading.classList.remove('hidden');
+            authContainer.classList.add('hidden');
+            
+            try {
+                const res = await fetch(`${API_URL}/check-setup`);
+                if (!res.ok) throw new Error('Network error');
+                const data = await res.json();
+                
+                loading.classList.add('hidden');
+                authContainer.classList.remove('hidden');
+
+                if (data.setupRequired) {
+                    // Show Setup
+                    setupView.classList.remove('hidden');
+                    loginView.classList.add('hidden');
+                } else {
+                    // Show Login
+                    setupView.classList.add('hidden');
+                    loginView.classList.remove('hidden');
+                }
+
+            } catch (err) {
+                loading.innerText = "Error connecting to server. Please refresh.";
+                showNotify("Connection failed", "bg-red-600");
+            }
         }
 
-        // Toggles
-        document.getElementById('show-register').onclick = (e) => {
+        // --- Handlers ---
+
+        document.getElementById('login-form').onsubmit = async (e) => {
             e.preventDefault();
-            loginForm.classList.add('hidden');
-            registerForm.classList.remove('hidden');
+            const username = document.getElementById('login-user').value;
+            const password = document.getElementById('login-pass').value;
+            
+            try {
+                const res = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                
+                if (!res.ok) throw new Error(data.error);
+                
+                localStorage.setItem('admin_token', data.token);
+                token = data.token;
+                loadDashboard();
+                
+            } catch (err) {
+                showNotify(err.message, 'bg-red-600');
+            }
         };
-        document.getElementById('show-login').onclick = (e) => {
+
+        document.getElementById('setup-form').onsubmit = async (e) => {
             e.preventDefault();
-            registerForm.classList.add('hidden');
-            loginForm.classList.remove('hidden');
+            const username = document.getElementById('setup-user').value;
+            const password = document.getElementById('setup-pass').value;
+
+            try {
+                const res = await fetch(`${API_URL}/setup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.error);
+
+                showNotify("Setup Complete! Please Login.", "bg-green-600");
+                
+                // Switch to login view instantly
+                setupView.classList.add('hidden');
+                loginView.classList.remove('hidden');
+                document.getElementById('login-user').value = username; // Auto-fill username
+
+            } catch (err) {
+                showNotify(err.message, 'bg-red-600');
+            }
         };
 
         document.getElementById('logout-btn').onclick = () => {
             localStorage.removeItem('admin_token');
             token = null;
-            showAuth();
+            dashboardContainer.classList.add('hidden');
+            checkSystemStatus(); // Re-check to determine which screen to show
         };
 
-        // Handlers
-        async function handleAuth(endpoint, body) {
-            try {
-                const res = await fetch(`${API_URL}${endpoint}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-                
-                if (!res.ok) throw new Error(data.error || 'Request failed');
-                
-                if (data.token) {
-                    localStorage.setItem('admin_token', data.token);
-                    token = data.token;
-                    loadDashboard();
-                } else {
-                    showNotify('Success: ' + data.message, 'bg-green-600');
-                    if (endpoint === '/register') {
-                        document.getElementById('show-login').click();
-                    }
-                }
-            } catch (err) {
-                showNotify(err.message, 'bg-red-600');
-            }
-        }
-
-        loginForm.onsubmit = (e) => {
-            e.preventDefault();
-            const username = document.getElementById('login-user').value;
-            const password = document.getElementById('login-pass').value;
-            handleAuth('/login', { username, password });
-        };
-
-        registerForm.onsubmit = (e) => {
-            e.preventDefault();
-            const username = document.getElementById('reg-user').value;
-            const password = document.getElementById('reg-pass').value;
-            handleAuth('/register', { username, password });
-        };
+        // --- Dashboard Logic ---
 
         async function loadDashboard() {
+            loading.classList.add('hidden');
             authContainer.classList.add('hidden');
             dashboardContainer.classList.remove('hidden');
 
@@ -164,9 +220,8 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (res.status === 401) {
-                    throw new Error('Session expired');
-                }
+                if (res.status === 401) throw new Error('Session expired');
+                if (!res.ok) throw new Error('Failed to load data');
 
                 const data = await res.json();
                 document.getElementById('welcome-msg').innerText = data.message;
@@ -178,28 +233,24 @@
                     data.bucket_files.forEach(f => {
                         const li = document.createElement('li');
                         li.textContent = f;
+                        li.className = "p-2 bg-gray-900 rounded border border-gray-700";
                         list.appendChild(li);
                     });
                 } else {
-                    list.innerHTML = '<li>No files found in bucket.</li>';
+                    list.innerHTML = '<li class="text-gray-500">No secret files found.</li>';
                 }
 
             } catch (err) {
-                showNotify(err.message, 'bg-red-600');
+                showNotify("Session expired or invalid", "bg-yellow-600");
                 localStorage.removeItem('admin_token');
-                showAuth();
+                token = null;
+                dashboardContainer.classList.add('hidden');
+                checkSystemStatus();
             }
         }
 
-        function showAuth() {
-            dashboardContainer.classList.add('hidden');
-            authContainer.classList.remove('hidden');
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
-        }
-
         function showNotify(msg, colorClass) {
-            notification.className = `fixed top-5 right-5 p-4 rounded shadow-lg text-white ${colorClass}`;
+            notification.className = `fixed top-5 right-5 p-4 rounded shadow-lg text-white z-50 ${colorClass}`;
             notification.innerText = msg;
             notification.classList.remove('hidden');
             setTimeout(() => notification.classList.add('hidden'), 3000);
