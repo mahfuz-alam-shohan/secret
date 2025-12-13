@@ -145,14 +145,10 @@
         // Init
         window.onload = async () => {
             if (token) {
-                try { await loadDashboard(); return; } 
-                catch(e) { 
-                    console.log("Token invalid, clearing");
-                    token = null; 
-                    localStorage.removeItem('admin_token'); 
-                }
+                await loadDashboard();
+            } else {
+                checkSystemStatus();
             }
-            checkSystemStatus();
         };
 
         // UI Helpers
@@ -163,7 +159,7 @@
             notification.classList.remove('hidden');
             setTimeout(() => {
                 notification.classList.add('hidden');
-            }, 3000);
+            }, 5000); // Increased duration to read errors
         }
 
         async function apiCall(endpoint, method = 'GET', body = null) {
@@ -173,17 +169,22 @@
             const config = { method, headers };
             if (body) config.body = JSON.stringify(body);
 
-            const res = await fetch(`${API_URL}${endpoint}`, config);
+            let res;
+            try {
+                res = await fetch(`${API_URL}${endpoint}`, config);
+            } catch (err) {
+                throw new Error("Network connection failed");
+            }
+
             const contentType = res.headers.get("content-type");
             
-            // Handle empty responses (like from DELETE sometimes) or errors
             if (!contentType || !contentType.includes("application/json")) {
-                 if(!res.ok) throw new Error(`Server Error: ${res.status}`);
-                 return {}; // Return empty object if success but no json
+                 if(!res.ok) throw new Error(`Server Error (${res.status})`);
+                 return {}; 
             }
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Request failed');
+            if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
             return data;
         }
 
@@ -193,6 +194,9 @@
             loading.classList.remove('hidden');
             authContainer.classList.add('hidden');
             try {
+                // If token exists, we are already checking dashboard, so skip this unless token is null
+                if (token) return;
+
                 const data = await apiCall('/check-setup');
                 loading.classList.add('hidden');
                 authContainer.classList.remove('hidden');
@@ -215,7 +219,7 @@
             dashboardContainer.classList.remove('hidden');
             try {
                 const data = await apiCall('/dashboard');
-                document.getElementById('welcome-msg').innerText = `Welcome back, ${data.message.split(', ')[1]}`;
+                document.getElementById('welcome-msg').innerText = data.message;
                 document.getElementById('stat-count').innerText = data.stats.active_sessions;
                 
                 const list = document.getElementById('bucket-list');
@@ -231,20 +235,23 @@
                         </li>
                     `).join('');
                 } else {
-                    list.innerHTML = `
-                        <div class="flex flex-col items-center justify-center py-12 text-gray-400">
-                            <svg class="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-                            <span class="text-sm">No secrets found in bucket</span>
-                        </div>
-                    `;
+                    list.innerHTML = `<li class="text-center text-gray-400 py-4">No secrets found in bucket</li>`;
                 }
 
             } catch (err) {
-                // If dashboard load fails, assume token invalid
-                localStorage.removeItem('admin_token');
-                token = null;
-                dashboardContainer.classList.add('hidden');
-                checkSystemStatus();
+                // STOP THE LOOP: We do NOT auto-logout here anymore.
+                // We show the error so you can see why it failed.
+                console.error("Dashboard Load Error:", err);
+                showNotify("Dashboard Error: " + err.message, 'error');
+                
+                // Only logout if explicitly Unauthorized (401)
+                if (err.message.includes("401") || err.message.includes("Unauthorized") || err.message.includes("Session expired")) {
+                     setTimeout(() => {
+                         localStorage.removeItem('admin_token');
+                         token = null;
+                         location.reload();
+                     }, 2000);
+                }
             }
         }
 
@@ -269,8 +276,11 @@
             try {
                 await apiCall('/setup', 'POST', { username: u, password: p });
                 showNotify("Setup Complete! Please Login.", "success");
-                // Refresh view logic
+                
+                // Force check status to switch to login view
+                token = null; 
                 await checkSystemStatus();
+                
                 // Prefill login
                 document.getElementById('login-user').value = u;
             } catch (err) { showNotify(err.message, 'error'); }
@@ -279,17 +289,17 @@
         document.getElementById('logout-btn').onclick = () => {
             localStorage.removeItem('admin_token');
             token = null;
-            location.reload(); // Simple reload to clear state and show login
+            location.reload();
         };
 
         document.getElementById('reset-btn').onclick = async () => {
-            if (!confirm("⚠️ ULTIMATE RESET WARNING ⚠️\n\nAre you sure you want to delete ALL data? This includes your admin account.\n\nThe system will return to the 'First Time Setup' screen.")) {
+            if (!confirm("⚠️ ULTIMATE RESET WARNING ⚠️\n\nThis will delete your account and all data. You will be logged out immediately.")) {
                 return;
             }
 
             try {
                 await apiCall('/reset', 'DELETE');
-                alert("System has been reset.");
+                alert("System Reset Successfully.");
                 localStorage.removeItem('admin_token');
                 token = null;
                 location.reload();
