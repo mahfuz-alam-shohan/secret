@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Messenger Admin</title>
+    <title>Secret Messenger</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -11,133 +11,234 @@
         .hidden { display: none; }
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .blur-in { animation: blurIn 0.5s ease-out; }
+        @keyframes blurIn { from { filter: blur(10px); opacity: 0; } to { filter: blur(0); opacity: 1; } }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-gray-50 text-gray-800 min-h-screen transition-colors duration-500">
 
-    <!-- Notifications -->
+    <!-- === NOTIFICATIONS === -->
     <div id="notification" class="fixed top-5 right-5 hidden px-6 py-4 rounded-lg shadow-xl text-white font-medium z-50 transition-all transform duration-300"></div>
 
-    <!-- Loading -->
-    <div id="loading" class="text-indigo-600 font-semibold animate-pulse flex flex-col items-center gap-2">
-        <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span class="text-sm tracking-widest uppercase">System Initializing</span>
-    </div>
+    <!-- === 1. SECRET VIEWER MODE (Clean, Mobile First) === -->
+    <div id="viewer-app" class="hidden w-full h-screen flex flex-col items-center justify-center p-4 bg-gray-900 text-white">
+        <div id="viewer-loading" class="animate-pulse flex flex-col items-center">
+            <svg class="w-12 h-12 text-indigo-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <p class="text-gray-400 tracking-widest text-sm uppercase">Decrypting Message...</p>
+        </div>
 
-    <!-- Auth Container -->
-    <div id="auth-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden hidden fade-in">
-        <div class="h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-        <div class="p-8">
-            <!-- Login View -->
-            <div id="login-view" class="hidden">
-                <h1 class="text-3xl font-bold mb-2 text-center text-gray-900">Welcome Back</h1>
-                <p class="text-center text-gray-500 text-sm mb-8">Please enter your credentials to continue.</p>
-                <form id="login-form" class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Username</label>
-                        <input type="text" id="login-user" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all" placeholder="Enter username" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Password</label>
-                        <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all" placeholder="Enter password" required>
-                    </div>
-                    <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold shadow-lg shadow-indigo-200 transition-all transform active:scale-95">Sign In</button>
-                </form>
+        <div id="viewer-content" class="hidden w-full max-w-2xl blur-in text-center">
+            <div class="mb-8">
+                <span class="inline-block p-3 rounded-full bg-green-500/20 text-green-400 mb-4">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </span>
+                <h1 class="text-3xl font-bold mb-2">Secure Message</h1>
+                <p class="text-gray-400 text-sm">This message will self-destruct.</p>
             </div>
-            <!-- Setup View -->
-            <div id="setup-view" class="hidden">
-                <div class="text-center mb-6">
-                    <h1 class="text-2xl font-bold text-gray-900">System Setup</h1>
-                    <p class="text-gray-500 text-sm">Create the master administrator account.</p>
-                </div>
-                <form id="setup-form" class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Master Username</label>
-                        <input type="text" id="setup-user" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Master Password</label>
-                        <input type="password" id="setup-pass" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" minlength="6" required>
-                    </div>
-                    <button type="submit" class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-lg shadow-blue-200 transition-all">Complete Setup</button>
-                </form>
+            
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                <!-- The Secret Content -->
+                <p id="secret-text" class="text-xl md:text-2xl font-mono leading-relaxed break-words select-all selection:bg-indigo-500 selection:text-white">
+                    --
+                </p>
             </div>
+
+            <p id="viewer-timer" class="mt-8 text-gray-500 text-sm font-mono"></p>
+        </div>
+
+        <div id="viewer-error" class="hidden text-center max-w-md">
+            <div class="text-6xl mb-4">💥</div>
+            <h2 class="text-2xl font-bold text-red-500 mb-2">Message Destroyed</h2>
+            <p class="text-gray-400">This secret link is invalid, expired, or has already been viewed by the maximum number of devices.</p>
+            <a href="/" class="mt-8 inline-block text-indigo-400 hover:text-indigo-300 underline">Go Home</a>
         </div>
     </div>
 
-    <!-- Dashboard -->
-    <div id="dashboard-container" class="w-full max-w-5xl hidden fade-in">
-        <header class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-900">Admin<span class="text-indigo-600">Console</span></h2>
-                <p id="welcome-msg" class="text-gray-500 text-sm">Welcome back</p>
-            </div>
-            <button id="logout-btn" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center gap-2">
-                <span>Logout</span>
-            </button>
-        </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="space-y-6">
+    <!-- === 2. ADMIN DASHBOARD MODE === -->
+    <div id="admin-app" class="hidden min-h-screen flex flex-col items-center justify-center p-4">
+        
+        <!-- Loading Spinner -->
+        <div id="loading" class="text-indigo-600 font-semibold animate-pulse flex flex-col items-center gap-2">
+            <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-sm tracking-widest uppercase">System Initializing</span>
+        </div>
+
+        <!-- Auth Forms -->
+        <div id="auth-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden hidden fade-in">
+            <div class="h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+            <div class="p-8">
+                <!-- Login -->
+                <div id="login-view" class="hidden">
+                    <h1 class="text-2xl font-bold mb-6 text-center text-gray-900">Admin Console</h1>
+                    <form id="login-form" class="space-y-4">
+                        <input type="text" id="login-user" class="w-full p-3 bg-gray-50 rounded border focus:border-indigo-500 outline-none" placeholder="Username" required>
+                        <input type="password" id="login-pass" class="w-full p-3 bg-gray-50 rounded border focus:border-indigo-500 outline-none" placeholder="Password" required>
+                        <button type="submit" class="w-full p-3 bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 transition">Login</button>
+                    </form>
+                </div>
+                <!-- Setup -->
+                <div id="setup-view" class="hidden">
+                    <h1 class="text-2xl font-bold mb-2 text-center text-gray-900">System Setup</h1>
+                    <p class="text-center text-gray-500 text-sm mb-6">Create master account.</p>
+                    <form id="setup-form" class="space-y-4">
+                        <input type="text" id="setup-user" class="w-full p-3 bg-gray-50 rounded border focus:border-blue-500 outline-none" placeholder="Master Username" required>
+                        <input type="password" id="setup-pass" class="w-full p-3 bg-gray-50 rounded border focus:border-blue-500 outline-none" placeholder="Master Password" required>
+                        <button type="submit" class="w-full p-3 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition">Create Account</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard-container" class="w-full max-w-4xl hidden fade-in">
+            <header class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">Secret<span class="text-indigo-600">Admin</span></h2>
+                    <p id="welcome-msg" class="text-gray-500 text-sm">--</p>
+                </div>
+                <button id="logout-btn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-sm font-medium">Logout</button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Create Secret Card -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+                    <div class="flex items-center gap-2 mb-6">
+                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800">Create New Secret</h3>
+                    </div>
+
+                    <form id="create-secret-form" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-500 uppercase mb-2">Secret Message</label>
+                            <textarea id="secret-content" rows="4" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" placeholder="Type your secret here..." required></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-500 uppercase mb-2">Max Views (Devices)</label>
+                                <input type="number" id="secret-views" value="1" min="1" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-500 uppercase mb-2">Expires After (Once Opened)</label>
+                                <select id="secret-timer" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                                    <option value="0">Burn immediately after viewing</option>
+                                    <option value="10">10 Seconds</option>
+                                    <option value="60">1 Minute</option>
+                                    <option value="300">5 Minutes</option>
+                                    <option value="3600">1 Hour</option>
+                                    <option value="86400">24 Hours</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition transform active:scale-95">
+                            Generate Secret Link
+                        </button>
+                    </form>
+
+                    <!-- Result Box -->
+                    <div id="result-box" class="hidden mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                        <p class="text-green-800 font-medium mb-2">Secret Created Successfully!</p>
+                        <div class="flex gap-2">
+                            <input type="text" id="result-link" readonly class="flex-grow p-2 bg-white border border-green-200 rounded text-sm text-gray-600">
+                            <button onclick="copyLink()" class="px-4 py-2 bg-green-600 text-white rounded text-sm font-bold hover:bg-green-700">Copy</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats / Danger -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">System Status</h3>
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-                        <span class="text-gray-700 font-medium">Operational</span>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                         <span class="text-gray-500 text-sm">Active Sessions</span>
-                         <span class="text-2xl font-bold ml-2 text-indigo-600 block" id="stat-count">--</span>
+                    <h3 class="font-bold text-gray-400 text-sm uppercase mb-4">System Health</h3>
+                    <div class="flex justify-between items-center">
+                         <span class="text-gray-600">Active Secrets</span>
+                         <span id="stat-secrets" class="text-2xl font-bold text-indigo-600">--</span>
                     </div>
                 </div>
+
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
-                    <h3 class="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Danger Zone</h3>
-                    <p class="text-xs text-gray-500 mb-4">This action will delete all data and reset the application.</p>
-                    <button id="reset-btn" class="w-full py-2 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-colors">Ultimate Reset</button>
-                </div>
-            </div>
-            <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 class="text-lg font-bold text-gray-800">Stored Secrets</h3>
-                    <span class="bg-blue-50 text-blue-600 text-xs px-3 py-1 rounded-full font-medium">R2 Bucket</span>
-                </div>
-                <div class="p-6 flex-grow">
-                    <ul id="bucket-list" class="space-y-3">
-                        <li class="text-gray-400 text-sm italic text-center py-8">Scanning storage container...</li>
-                    </ul>
+                    <h3 class="font-bold text-red-400 text-sm uppercase mb-4">Danger Zone</h3>
+                    <button id="reset-btn" class="w-full py-2 bg-red-50 text-red-600 border border-red-200 rounded font-medium hover:bg-red-100">Ultimate Reset</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- === JAVASCRIPT LOGIC === -->
     <script>
         const API_URL = '/api';
-        const loading = document.getElementById('loading');
-        const authContainer = document.getElementById('auth-container');
-        const loginView = document.getElementById('login-view');
-        const setupView = document.getElementById('setup-view');
-        const dashboardContainer = document.getElementById('dashboard-container');
+        const urlParams = new URLSearchParams(window.location.search);
+        const secretId = urlParams.get('id'); // check for ?id=...
+
+        // UI Elements
         const notification = document.getElementById('notification');
+        const viewerApp = document.getElementById('viewer-app');
+        const adminApp = document.getElementById('admin-app');
+        
+        // --- ROUTING ---
+        if (secretId) {
+            // MODE: VIEWER
+            viewerApp.classList.remove('hidden');
+            loadSecret(secretId);
+        } else {
+            // MODE: ADMIN
+            adminApp.classList.remove('hidden');
+            initAdmin();
+        }
 
-        let token = localStorage.getItem('admin_token');
-
-        window.onload = async () => {
-            if (token) {
-                await loadDashboard();
-            } else {
-                checkSystemStatus();
-            }
-        };
-
+        // --- NOTIFICATIONS ---
         function showNotify(msg, type = 'success') {
             const colors = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
             notification.className = `fixed top-5 right-5 px-6 py-4 rounded-lg shadow-xl text-white font-medium z-50 transition-all transform duration-300 ${colors}`;
             notification.innerText = msg;
             notification.classList.remove('hidden');
-            setTimeout(() => { notification.classList.add('hidden'); }, 4000);
+            setTimeout(() => notification.classList.add('hidden'), 3000);
+        }
+
+        // --- VIEWER LOGIC ---
+        async function loadSecret(id) {
+            try {
+                const res = await fetch(`${API_URL}/secret/${id}`);
+                const data = await res.json();
+
+                document.getElementById('viewer-loading').classList.add('hidden');
+
+                if (!res.ok) {
+                    document.getElementById('viewer-error').classList.remove('hidden');
+                    return;
+                }
+
+                // Show Content
+                document.getElementById('viewer-content').classList.remove('hidden');
+                document.getElementById('secret-text').innerText = data.content;
+
+                // Handle Timer UI if specific expiry
+                if (data.settings.expiry > 0) {
+                     const timerEl = document.getElementById('viewer-timer');
+                     timerEl.innerText = `This message is on a timer (${data.settings.expiry}s)`;
+                }
+
+            } catch (err) {
+                document.getElementById('viewer-loading').classList.add('hidden');
+                document.getElementById('viewer-error').classList.remove('hidden');
+            }
+        }
+
+        // --- ADMIN LOGIC ---
+        let token = localStorage.getItem('admin_token');
+
+        function initAdmin() {
+            if (token) {
+                loadDashboard();
+            } else {
+                checkStatus();
+            }
         }
 
         async function apiCall(endpoint, method = 'GET', body = null) {
@@ -146,73 +247,55 @@
             const config = { method, headers };
             if (body) config.body = JSON.stringify(body);
 
-            let res;
-            try { res = await fetch(`${API_URL}${endpoint}`, config); } 
-            catch (err) { throw new Error("Network connection failed"); }
-
-            // FORCE READ: Try JSON, fallback to text, never just fail on header check
-            let data;
-            const text = await res.text();
-            try {
-                data = JSON.parse(text);
-            } catch(e) {
-                // If not JSON, use text or generic error
-                if (!res.ok) throw new Error(`Server Error (${res.status}): ${text.substring(0, 50)}`);
-                return {}; // Success but no JSON
+            const res = await fetch(`${API_URL}${endpoint}`, config);
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('json')) {
+                if(!res.ok) throw new Error(`Status ${res.status}`);
+                return {}; 
             }
-
-            if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Request failed');
             return data;
         }
 
-        async function checkSystemStatus() {
+        async function checkStatus() {
+            const loading = document.getElementById('loading');
+            const authContainer = document.getElementById('auth-container');
             loading.classList.remove('hidden');
             authContainer.classList.add('hidden');
+
             try {
-                if (token) return; // Skip if we have token
                 const data = await apiCall('/check-setup');
                 loading.classList.add('hidden');
                 authContainer.classList.remove('hidden');
+
                 if (data.setupRequired) {
-                    setupView.classList.remove('hidden');
-                    loginView.classList.add('hidden');
+                    document.getElementById('setup-view').classList.remove('hidden');
                 } else {
-                    setupView.classList.add('hidden');
-                    loginView.classList.remove('hidden');
+                    document.getElementById('login-view').classList.remove('hidden');
                 }
-            } catch (err) { loading.innerText = "System Error: " + err.message; }
+            } catch (err) { loading.innerText = "Error: " + err.message; }
         }
 
         async function loadDashboard() {
-            loading.classList.add('hidden');
-            authContainer.classList.add('hidden');
-            dashboardContainer.classList.remove('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('dashboard-container').classList.remove('hidden');
+
             try {
                 const data = await apiCall('/dashboard');
                 document.getElementById('welcome-msg').innerText = data.message;
-                document.getElementById('stat-count').innerText = data.stats.active_sessions;
-                
-                const list = document.getElementById('bucket-list');
-                const files = data.bucket_files || [];
-                if (files.length > 0) {
-                    list.innerHTML = files.map(f => `<li class='p-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-700'>${f}</li>`).join('');
-                } else {
-                    list.innerHTML = `<li class="text-center text-gray-400 py-4">No secrets found</li>`;
-                }
+                document.getElementById('stat-secrets').innerText = data.stats.active_secrets;
             } catch (err) {
-                console.error("Dashboard Load Error:", err);
-                showNotify("Session Expired: " + err.message, 'error');
-                
-                // Auto-Logout only on real auth errors
-                if (err.message.includes("401") || err.message.includes("Session") || err.message.includes("expired")) {
-                     setTimeout(() => {
-                         localStorage.removeItem('admin_token');
-                         token = null;
-                         location.reload();
-                     }, 2000);
+                if (err.message.includes('401') || err.message.includes('Session')) {
+                    localStorage.removeItem('admin_token');
+                    token = null;
+                    location.reload();
                 }
             }
         }
+
+        // --- FORM HANDLERS (ADMIN) ---
 
         document.getElementById('login-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -222,7 +305,7 @@
                 const data = await apiCall('/login', 'POST', { username: u, password: p });
                 localStorage.setItem('admin_token', data.token);
                 token = data.token;
-                loadDashboard();
+                location.reload();
             } catch (err) { showNotify(err.message, 'error'); }
         };
 
@@ -232,29 +315,63 @@
             const p = document.getElementById('setup-pass').value;
             try {
                 await apiCall('/setup', 'POST', { username: u, password: p });
-                showNotify("Setup Complete!", "success");
-                token = null; 
-                await checkSystemStatus();
-                document.getElementById('login-user').value = u;
+                showNotify("Setup Complete", 'success');
+                setTimeout(() => location.reload(), 1000);
             } catch (err) { showNotify(err.message, 'error'); }
+        };
+
+        document.getElementById('create-secret-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const content = document.getElementById('secret-content').value;
+            const views = document.getElementById('secret-views').value;
+            const timer = document.getElementById('secret-timer').value;
+
+            try {
+                const data = await apiCall('/secret', 'POST', { 
+                    content, 
+                    max_views: parseInt(views), 
+                    expiry_seconds: parseInt(timer) 
+                });
+                
+                // Show Result
+                const link = `${window.location.origin}?id=${data.id}`;
+                document.getElementById('result-link').value = link;
+                document.getElementById('result-box').classList.remove('hidden');
+                showNotify("Secret Created!", 'success');
+                
+                // Reset Form
+                document.getElementById('secret-content').value = '';
+                
+                // Refresh Stats
+                const dbData = await apiCall('/dashboard');
+                document.getElementById('stat-secrets').innerText = dbData.stats.active_secrets;
+
+            } catch (err) { showNotify(err.message, 'error'); }
+        };
+
+        window.copyLink = () => {
+            const copyText = document.getElementById("result-link");
+            copyText.select();
+            document.execCommand("copy"); // Fallback for some browsers
+            navigator.clipboard.writeText(copyText.value);
+            showNotify("Link Copied!", 'success');
         };
 
         document.getElementById('logout-btn').onclick = () => {
             localStorage.removeItem('admin_token');
-            token = null;
             location.reload();
         };
 
         document.getElementById('reset-btn').onclick = async () => {
-            if (!confirm("⚠️ ULTIMATE RESET WARNING ⚠️\n\nDelete all data?")) return;
+            if (!confirm("Delete EVERYTHING?")) return;
             try {
                 await apiCall('/reset', 'DELETE');
-                alert("System Reset.");
+                alert("Reset Done");
                 localStorage.removeItem('admin_token');
-                token = null;
                 location.reload();
-            } catch (err) { showNotify(err.message, 'error'); }
+            } catch(e) { showNotify(e.message, 'error'); }
         };
+
     </script>
 </body>
 </html>
