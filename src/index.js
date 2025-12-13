@@ -7,7 +7,7 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    // CORS Headers for frontend access
+    // CORS Headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -25,18 +25,15 @@ export default {
       try {
         const { username, password } = await request.json();
         
-        // Basic Validation
         if (!username || !password || password.length < 6) {
           return new Response(JSON.stringify({ error: "Invalid input. Password min 6 chars." }), { status: 400, headers: corsHeaders });
         }
 
-        // Check if user exists
         const existing = await env.DB.prepare("SELECT id FROM admins WHERE username = ?").bind(username).first();
         if (existing) {
           return new Response(JSON.stringify({ error: "Username taken" }), { status: 409, headers: corsHeaders });
         }
 
-        // Hash and Store
         const salt = generateSalt();
         const hash = await hashPassword(password, salt);
         
@@ -65,9 +62,7 @@ export default {
           return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
         }
 
-        // Create Session
         const sessionId = generateSessionId();
-        // Expires in 24 hours
         const expiresAt = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
 
         await env.DB.prepare(
@@ -81,7 +76,7 @@ export default {
       }
     }
 
-    // 3. DASHBOARD DATA (GET /api/dashboard) - Protected Route
+    // 3. DASHBOARD DATA (GET /api/dashboard)
     if (path === '/api/dashboard' && method === 'GET') {
       const authHeader = request.headers.get('Authorization');
       const token = authHeader ? authHeader.split(' ')[1] : null;
@@ -90,7 +85,6 @@ export default {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
       }
 
-      // Validate Session
       const session = await env.DB.prepare(
         "SELECT sessions.*, admins.username FROM sessions JOIN admins ON sessions.user_id = admins.id WHERE sessions.id = ? AND sessions.expires_at > ?"
       ).bind(token, Math.floor(Date.now() / 1000)).first();
@@ -99,8 +93,6 @@ export default {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: corsHeaders });
       }
 
-      // Check R2 Bucket (Example Usage)
-      // List files in the 'secret' bucket just to show it works
       let bucketObjects = [];
       try {
          const list = await env.BUCKET.list({ limit: 5 });
@@ -113,12 +105,17 @@ export default {
         message: `Welcome back, ${session.username}`,
         bucket_files: bucketObjects,
         stats: {
-          active_sessions: 1 // Placeholder for real stats
+          active_sessions: 1 
         }
       }), { status: 200, headers: corsHeaders });
     }
 
-    // Default 404
-    return new Response("Not Found", { status: 404, headers: corsHeaders });
+    // --- STATIC ASSET SERVING ---
+    // If the request is not an API call, try to serve the file from the 'public' folder
+    try {
+      return await env.ASSETS.fetch(request);
+    } catch (e) {
+      return new Response("Not Found", { status: 404 });
+    }
   }
 };
