@@ -1,7 +1,7 @@
 // src/index.js
 import { generateSalt, hashPassword, verifyPassword, generateSessionId } from './security.js';
 
-// --- SAFETY WRAPPERS ---
+// --- SAFETY WRAPPERS (Prevents Worker Crashes) ---
 async function safeQuery(env, query, ...args) {
     try {
         if (!env.DB) throw new Error("DB_BINDING_MISSING");
@@ -22,7 +22,7 @@ async function safeSelect(env, query, ...args) {
     }
 }
 
-// Ensure tables exist (Run this often to be safe)
+// --- INIT DB ---
 async function initDB(env) {
     const queries = [
         `CREATE TABLE IF NOT EXISTS admins (
@@ -58,6 +58,7 @@ export default {
         const path = url.pathname;
         const method = request.method;
 
+        // CORS Headers
         const corsHeaders = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -69,8 +70,7 @@ export default {
 
         if (path.startsWith('/api')) {
             try {
-                // Initialize DB on every API call to ensure stability
-                await initDB(env);
+                await initDB(env); // Ensure DB is ready
 
                 // 1. PUBLIC: GET SECRET
                 const secretMatch = path.match(/^\/api\/secret\/(.+)$/);
@@ -151,11 +151,11 @@ export default {
                 const session = await safeSelect(env, "SELECT sessions.*, admins.username FROM sessions JOIN admins ON sessions.user_id = admins.id WHERE sessions.id = ? AND sessions.expires_at > ?", token, Math.floor(Date.now() / 1000));
                 if (!session) return new Response(JSON.stringify({ error: "Invalid Session" }), { status: 401, headers: corsHeaders });
 
-                // 5. DASHBOARD
+                // 5. DASHBOARD STATS
                 if (path === '/api/dashboard' && method === 'GET') {
                     const stats = await safeSelect(env, "SELECT COUNT(*) as count FROM secrets");
                     return new Response(JSON.stringify({ 
-                        message: `Welcome, ${session.username}`,
+                        username: session.username,
                         stats: { active_secrets: stats?.count || 0 }
                     }), { status: 200, headers: corsHeaders });
                 }
