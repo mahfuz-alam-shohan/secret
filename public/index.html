@@ -5,70 +5,128 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secret Messenger Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
+        body { font-family: 'Inter', sans-serif; }
         .hidden { display: none; }
-        .fade-in { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen flex flex-col items-center justify-center">
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div id="notification" class="fixed top-5 right-5 hidden p-4 rounded shadow-lg text-white z-50"></div>
+    <!-- Notifications -->
+    <div id="notification" class="fixed top-5 right-5 hidden px-6 py-4 rounded-lg shadow-xl text-white font-medium z-50 transition-all transform duration-300"></div>
 
-    <div id="loading" class="text-emerald-400 font-mono animate-pulse">Initializing Secure System...</div>
+    <!-- Loading -->
+    <div id="loading" class="text-indigo-600 font-semibold animate-pulse flex flex-col items-center gap-2">
+        <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-sm tracking-widest uppercase">System Initializing</span>
+    </div>
 
     <!-- Auth Container -->
-    <div id="auth-container" class="w-full max-w-md p-8 bg-gray-800 rounded-lg shadow-xl border border-gray-700 hidden fade-in">
+    <div id="auth-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden hidden fade-in">
+        <div class="h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
         
-        <!-- Login View -->
-        <div id="login-view" class="hidden">
-            <h1 class="text-3xl font-bold mb-6 text-center text-emerald-400">System Access</h1>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Username</label>
-                    <input type="text" id="login-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Password</label>
-                    <input type="password" id="login-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
-                </div>
-                <button type="submit" class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 rounded font-bold transition">Log In</button>
-            </form>
-        </div>
+        <div class="p-8">
+            <!-- Login View -->
+            <div id="login-view" class="hidden">
+                <h1 class="text-3xl font-bold mb-2 text-center text-gray-900">Welcome Back</h1>
+                <p class="text-center text-gray-500 text-sm mb-8">Please enter your credentials to continue.</p>
+                
+                <form id="login-form" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Username</label>
+                        <input type="text" id="login-user" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all" placeholder="Enter username" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Password</label>
+                        <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold shadow-lg shadow-indigo-200 transition-all transform active:scale-95">Sign In</button>
+                </form>
+            </div>
 
-        <!-- Setup View -->
-        <div id="setup-view" class="hidden">
-            <h1 class="text-3xl font-bold mb-2 text-center text-blue-400">First Time Setup</h1>
-            <p class="text-center text-gray-400 text-sm mb-6">Create the master admin account.</p>
-            <form id="setup-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Master Username</label>
-                    <input type="text" id="setup-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none" required>
+            <!-- Setup View -->
+            <div id="setup-view" class="hidden">
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900">System Setup</h1>
+                    <p class="text-gray-500 text-sm">Create the master administrator account.</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Master Password</label>
-                    <input type="password" id="setup-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none" minlength="6" required>
-                </div>
-                <button type="submit" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 rounded font-bold transition">Create Master Account</button>
-            </form>
+
+                <form id="setup-form" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Master Username</label>
+                        <input type="text" id="setup-user" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Master Password</label>
+                        <input type="password" id="setup-pass" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none" minlength="6" required>
+                    </div>
+                    <button type="submit" class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-lg shadow-blue-200 transition-all">Complete Setup</button>
+                </form>
+            </div>
         </div>
     </div>
 
     <!-- Dashboard -->
-    <div id="dashboard-container" class="w-full max-w-4xl p-8 hidden fade-in">
-        <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-700">
-            <h2 class="text-2xl font-bold text-white">SECURE<span class="text-emerald-400">DASH</span></h2>
-            <button id="logout-btn" class="px-4 py-2 bg-red-900/80 hover:bg-red-700 border border-red-700 rounded text-sm transition">Logout</button>
+    <div id="dashboard-container" class="w-full max-w-5xl hidden fade-in">
+        <!-- Header -->
+        <header class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Admin<span class="text-indigo-600">Console</span></h2>
+                <p id="welcome-msg" class="text-gray-500 text-sm">Welcome back</p>
+            </div>
+            <button id="logout-btn" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center gap-2">
+                <span>Logout</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
-                <h3 class="text-xl font-semibold mb-4 text-emerald-400">Status</h3>
-                <p id="welcome-msg" class="mb-2">Loading...</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Sidebar / Stats -->
+            <div class="space-y-6">
+                 <!-- Status Card -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">System Status</h3>
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="text-gray-700 font-medium">Operational</span>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                         <span class="text-gray-500 text-sm">Active Sessions</span>
+                         <span class="text-2xl font-bold ml-2 text-indigo-600 block" id="stat-count">--</span>
+                    </div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                    <h3 class="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Danger Zone</h3>
+                    <p class="text-xs text-gray-500 mb-4">This action will delete all data, including your admin account, and reset the application.</p>
+                    <button id="reset-btn" class="w-full py-2 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-colors">
+                        Ultimate Reset
+                    </button>
+                </div>
             </div>
-            <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
-                <h3 class="text-xl font-semibold mb-4 text-blue-400">Files</h3>
-                <ul id="bucket-list" class="space-y-2 text-sm text-gray-300"></ul>
+
+            <!-- Main Content / Files -->
+            <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-800">Stored Secrets</h3>
+                    <span class="bg-blue-50 text-blue-600 text-xs px-3 py-1 rounded-full font-medium">R2 Bucket</span>
+                </div>
+                
+                <div class="p-6 flex-grow">
+                    <ul id="bucket-list" class="space-y-3">
+                        <li class="text-gray-400 text-sm italic text-center py-8">Scanning storage container...</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -84,20 +142,58 @@
 
         let token = localStorage.getItem('admin_token');
 
+        // Init
         window.onload = async () => {
             if (token) {
                 try { await loadDashboard(); return; } 
-                catch(e) { token = null; localStorage.removeItem('admin_token'); }
+                catch(e) { 
+                    console.log("Token invalid, clearing");
+                    token = null; 
+                    localStorage.removeItem('admin_token'); 
+                }
             }
             checkSystemStatus();
         };
+
+        // UI Helpers
+        function showNotify(msg, type = 'success') {
+            const colors = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
+            notification.className = `fixed top-5 right-5 px-6 py-4 rounded-lg shadow-xl text-white font-medium z-50 transition-all transform duration-300 ${colors}`;
+            notification.innerText = msg;
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 3000);
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const config = { method, headers };
+            if (body) config.body = JSON.stringify(body);
+
+            const res = await fetch(`${API_URL}${endpoint}`, config);
+            const contentType = res.headers.get("content-type");
+            
+            // Handle empty responses (like from DELETE sometimes) or errors
+            if (!contentType || !contentType.includes("application/json")) {
+                 if(!res.ok) throw new Error(`Server Error: ${res.status}`);
+                 return {}; // Return empty object if success but no json
+            }
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Request failed');
+            return data;
+        }
+
+        // --- Core Logic ---
 
         async function checkSystemStatus() {
             loading.classList.remove('hidden');
             authContainer.classList.add('hidden');
             try {
-                const res = await fetch(`${API_URL}/check-setup`);
-                const data = await res.json();
+                const data = await apiCall('/check-setup');
                 loading.classList.add('hidden');
                 authContainer.classList.remove('hidden');
                 
@@ -113,65 +209,38 @@
             }
         }
 
-        async function apiCall(endpoint, body) {
-            try {
-                const res = await fetch(`${API_URL}${endpoint}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                
-                const contentType = res.headers.get("content-type");
-                if (!contentType || !contentType.includes("application/json")) {
-                    const text = await res.text();
-                    throw new Error(`Server returned non-JSON: ${res.status} ${text.substring(0, 50)}...`);
-                }
-
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Request failed');
-                return data;
-            } catch (err) {
-                throw err;
-            }
-        }
-
-        document.getElementById('login-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('login-user').value;
-            const password = document.getElementById('login-pass').value;
-            try {
-                const data = await apiCall('/login', { username, password });
-                localStorage.setItem('admin_token', data.token);
-                token = data.token;
-                loadDashboard();
-            } catch (err) { showNotify(err.message, 'bg-red-600'); }
-        };
-
-        document.getElementById('setup-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('setup-user').value;
-            const password = document.getElementById('setup-pass').value;
-            try {
-                await apiCall('/setup', { username, password });
-                showNotify("Setup Complete!", "bg-green-600");
-                setupView.classList.add('hidden');
-                loginView.classList.remove('hidden');
-                document.getElementById('login-user').value = username;
-            } catch (err) { showNotify(err.message, 'bg-red-600'); }
-        };
-
         async function loadDashboard() {
             loading.classList.add('hidden');
             authContainer.classList.add('hidden');
             dashboardContainer.classList.remove('hidden');
             try {
-                const res = await fetch(`${API_URL}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (res.status === 401) throw new Error('Session expired');
-                const data = await res.json();
-                document.getElementById('welcome-msg').innerText = data.message;
+                const data = await apiCall('/dashboard');
+                document.getElementById('welcome-msg').innerText = `Welcome back, ${data.message.split(', ')[1]}`;
+                document.getElementById('stat-count').innerText = data.stats.active_sessions;
+                
                 const list = document.getElementById('bucket-list');
-                list.innerHTML = (data.bucket_files || []).map(f => `<li class='p-2 bg-gray-900 rounded'>${f}</li>`).join('') || '<li class="text-gray-500">No files</li>';
+                const files = data.bucket_files || [];
+                
+                if (files.length > 0) {
+                    list.innerHTML = files.map(f => `
+                        <li class='flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-white hover:shadow-sm transition-all'>
+                            <div class="text-indigo-500">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700">${f}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    list.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+                            <svg class="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                            <span class="text-sm">No secrets found in bucket</span>
+                        </div>
+                    `;
+                }
+
             } catch (err) {
+                // If dashboard load fails, assume token invalid
                 localStorage.removeItem('admin_token');
                 token = null;
                 dashboardContainer.classList.add('hidden');
@@ -179,12 +248,55 @@
             }
         }
 
-        function showNotify(msg, color) {
-            notification.className = `fixed top-5 right-5 p-4 rounded shadow-lg text-white z-50 ${color}`;
-            notification.innerText = msg;
-            notification.classList.remove('hidden');
-            setTimeout(() => notification.classList.add('hidden'), 3000);
-        }
+        // --- Event Listeners ---
+
+        document.getElementById('login-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pass').value;
+            try {
+                const data = await apiCall('/login', 'POST', { username: u, password: p });
+                localStorage.setItem('admin_token', data.token);
+                token = data.token;
+                loadDashboard();
+            } catch (err) { showNotify(err.message, 'error'); }
+        };
+
+        document.getElementById('setup-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('setup-user').value;
+            const p = document.getElementById('setup-pass').value;
+            try {
+                await apiCall('/setup', 'POST', { username: u, password: p });
+                showNotify("Setup Complete! Please Login.", "success");
+                // Refresh view logic
+                await checkSystemStatus();
+                // Prefill login
+                document.getElementById('login-user').value = u;
+            } catch (err) { showNotify(err.message, 'error'); }
+        };
+
+        document.getElementById('logout-btn').onclick = () => {
+            localStorage.removeItem('admin_token');
+            token = null;
+            location.reload(); // Simple reload to clear state and show login
+        };
+
+        document.getElementById('reset-btn').onclick = async () => {
+            if (!confirm("⚠️ ULTIMATE RESET WARNING ⚠️\n\nAre you sure you want to delete ALL data? This includes your admin account.\n\nThe system will return to the 'First Time Setup' screen.")) {
+                return;
+            }
+
+            try {
+                await apiCall('/reset', 'DELETE');
+                alert("System has been reset.");
+                localStorage.removeItem('admin_token');
+                token = null;
+                location.reload();
+            } catch (err) {
+                showNotify("Reset Failed: " + err.message, 'error');
+            }
+        };
     </script>
 </body>
 </html>
