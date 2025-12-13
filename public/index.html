@@ -3,448 +3,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Special Message</title>
+    <title>Secure Message Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- FUN FONTS for that Kiddy/Cartoon Vibe -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=Patrick+Hand&family=Gochi+Hand&family=Bangers&display=swap" rel="stylesheet">
+    <!-- FONTS: Mix of Cartoon (Fredoka) and Hacker (Share Tech Mono) -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=Patrick+Hand&family=Share+Tech+Mono&family=Inter:wght@400;700&family=Bangers&display=swap" rel="stylesheet">
     <style>
-        /* --- CARTOON WORLD SETTINGS --- */
-        body {
-            font-family: 'Fredoka', sans-serif;
-            background-color: #fce4ec; /* Soft Pink Base */
-            background-image: radial-gradient(#f8bbd0 1px, transparent 1px);
-            background-size: 20px 20px;
-            overflow: hidden;
-            opacity: 0; /* Starts hidden for smooth fade-in */
-            transition: opacity 1s ease-in-out;
-        }
+        /* --- GLOBAL & PRELOADER --- */
+        body { overflow: hidden; opacity: 0; transition: opacity 0.5s; }
         body.loaded { opacity: 1; }
-
-        /* --- THE CARTOON DESK (CSS BOOKS) --- */
-        .desk-scene {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            height: 100%; width: 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
         
-        /* CSS BOOKS STACK */
-        .book-stack {
-            position: absolute; bottom: 0; left: 5%;
-            display: flex; flex-direction: column-reverse;
-            align-items: center;
-        }
-        .book {
-            width: 140px; height: 35px;
-            border: 3px solid #333;
-            border-radius: 6px;
-            background: linear-gradient(90deg, var(--c1) 0%, var(--c1) 90%, rgba(255,255,255,0.3) 95%);
-            margin-bottom: -5px;
-            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
-            position: relative;
-        }
-        .book::after { content: ''; position: absolute; left: 10px; top: 5px; bottom: 5px; width: 4px; background: rgba(0,0,0,0.2); }
-        .book:nth-child(1) { --c1: #ff8a80; width: 160px; transform: rotate(-2deg); }
-        .book:nth-child(2) { --c1: #80d8ff; width: 150px; transform: rotate(1deg); }
-        .book:nth-child(3) { --c1: #ccff90; width: 145px; transform: rotate(-1deg); }
-        .book:nth-child(4) { --c1: #ffff8d; width: 130px; transform: rotate(3deg); }
-
-        /* SCATTERED ITEMS */
-        .pencil {
-            position: absolute; bottom: 100px; right: 10%;
-            width: 150px; height: 15px; background: #ffcc80;
-            border: 3px solid #333; transform: rotate(45deg);
-            border-radius: 10px;
-            box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
-        }
-        .pencil::after { content: ''; position: absolute; left: 0; top:0; height:100%; width: 20px; background: #ef9a9a; border-right: 3px solid #333; border-radius: 5px 0 0 5px; }
-
-        /* --- THE ENVELOPE (CARTOON STYLE) --- */
-        .envelope-stage {
-            position: relative; z-index: 10;
-            display: flex; flex-direction: column; items: center; justify-content: center;
-            height: 100vh; width: 100vw;
-            perspective: 1500px;
-        }
-
-        .envelope-wrapper {
-            position: relative;
-            width: 320px; height: 220px;
-            margin: 0 auto;
-            cursor: pointer;
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            /* Initial "pop in" animation state handled by JS */
-            transform: scale(0); 
-        }
-        .envelope-wrapper.popped { transform: scale(1); }
-        .envelope-wrapper:hover { transform: scale(1.05); }
-
-        .envelope-body {
-            position: absolute; bottom: 0; left: 0;
-            width: 100%; height: 100%;
-            background-color: #f48fb1;
-            border: 4px solid #4a2c2c;
-            border-radius: 12px;
-            overflow: hidden;
-            z-index: 20;
-            box-shadow: 8px 8px 0px rgba(0,0,0,0.15);
-        }
-        .envelope-body::after {
-            content: ''; position: absolute; bottom: 0; left: 50%;
-            transform: translateX(-50%) translateY(50%) rotate(45deg);
-            width: 250px; height: 250px;
-            background-color: #f06292;
-            border: 4px solid #4a2c2c;
-            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
-        }
-
-        .envelope-flap {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 120px;
-            background-color: #f8bbd0;
-            border: 4px solid #4a2c2c;
-            border-top: none;
-            clip-path: polygon(0 0, 50% 100%, 100% 0);
-            transform-origin: top;
-            transition: transform 0.6s ease-in-out, z-index 0.6s step-end;
-            z-index: 30;
-        }
-        .envelope-wrapper.open .envelope-flap { transform: rotateX(180deg); z-index: 1; }
-
-        .wax-seal {
-            position: absolute; top: 90px; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 50px; height: 50px;
-            background: #d32f2f;
-            border: 3px solid #b71c1c;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: rgba(0,0,0,0.3); font-size: 24px;
-            z-index: 35;
-            transition: opacity 0.3s;
-            box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
-        }
-        .envelope-wrapper.open .wax-seal { opacity: 0; pointer-events: none; }
-
-        /* --- THE LOVE LETTER --- */
-        .letter-content {
-            position: absolute; 
-            bottom: 10px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 95%;
-            background: #fff;
-            border: 3px solid #333;
-            border-radius: 8px;
-            padding: 20px;
-            z-index: 10;
-            transition: bottom 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            display: flex; flex-direction: column;
-            opacity: 0;
-        }
-        
-        .envelope-wrapper.open .letter-content {
-            bottom: 150px; /* Slide UP OUT of envelope */
-            height: 450px; width: 340px; /* Grow bigger */
-            opacity: 1;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        }
-
-        .letter-content::before {
-            content: ''; position: absolute; top:0; left:0; right:0; height: 20px;
-            background: repeating-linear-gradient(45deg, #ffcdd2, #ffcdd2 10px, #fff 10px, #fff 20px);
-            border-bottom: 3px solid #333;
-            border-radius: 5px 5px 0 0;
-        }
-
-        /* --- REELS TEXT ANIMATION --- */
-        .reels-container {
-            margin-top: 30px; flex: 1; overflow: hidden; position: relative;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
-        }
-        .reel-line {
-            font-family: 'Patrick Hand', cursive; font-size: 1.4rem; color: #555;
-            text-align: center; padding: 10px 0; opacity: 0.1; 
-            transform: scale(0.9) translateY(20px); transition: all 0.8s ease;
-            position: absolute; width: 100%;
-        }
-        .reel-line.active {
-            opacity: 1; transform: scale(1.1) translateY(0); color: #d81b60; font-weight: bold;
-            z-index: 10; position: relative;
-        }
-        .reel-line.past { opacity: 0; transform: translateY(-30px); position: absolute; }
-
-        /* --- LOADER --- */
         #init-loader {
-            position: fixed; inset: 0; background: #fff0f5;
-            z-index: 9999; /* TOP LAYER */
+            position: fixed; inset: 0; background: #fff0f5; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.8s ease-out, visibility 0.8s;
+            transition: opacity 0.5s, visibility 0.5s;
         }
         #init-loader.fade-out { opacity: 0; visibility: hidden; }
-        
-        .loader-heart { font-size: 50px; color: #ec407a; animation: beat 1s infinite; }
-        @keyframes beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
-        
-        #loading-text { font-family: 'Bangers', cursive; font-size: 1.5rem; letter-spacing: 2px; color: #880e4f; margin-top: 1rem; }
+        .loader-icon { font-size: 50px; animation: bounce 1s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-        /* --- DASHBOARD STYLES --- */
-        .dash-card {
-            background: white; border: 3px solid #eee; border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s;
-        }
-        .dash-card:hover { border-color: #6366f1; transform: translateY(-2px); }
+        /* --- THEME: CARTOON LOVE (PROPOSAL) --- */
+        .theme-proposal { background-color: #fce4ec; background-image: radial-gradient(#f8bbd0 1px, transparent 1px); background-size: 20px 20px; font-family: 'Fredoka', sans-serif; }
+        .desk-scene { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+        /* CSS Books */
+        .book-stack { position: absolute; bottom: 0; left: 5%; display: flex; flex-direction: column-reverse; align-items: center; }
+        .book { width: 140px; height: 35px; border: 3px solid #333; border-radius: 6px; background: white; margin-bottom: -5px; position: relative; box-shadow: 4px 4px 0 rgba(0,0,0,0.1); }
+        .book:nth-child(1) { background: #ff8a80; width: 160px; transform: rotate(-2deg); }
+        .book:nth-child(2) { background: #80d8ff; width: 150px; transform: rotate(1deg); }
+        .pencil { position: absolute; bottom: 100px; right: 10%; width: 150px; height: 15px; background: #ffcc80; border: 3px solid #333; transform: rotate(45deg); border-radius: 10px; box-shadow: 4px 4px 0 rgba(0,0,0,0.1); }
+        
+        /* Envelope */
+        .envelope-wrapper { position: relative; width: 320px; height: 220px; margin: 0 auto; transition: transform 0.3s; transform: scale(0); cursor: pointer; }
+        .envelope-wrapper.popped { transform: scale(1); }
+        .envelope-wrapper:hover { transform: scale(1.05); }
+        .envelope-body { position: absolute; inset: 0; background: #f48fb1; border: 4px solid #4a2c2c; border-radius: 12px; z-index: 20; overflow: hidden; }
+        .envelope-body::after { content:''; position: absolute; bottom:0; left:50%; transform: translate(-50%, 50%) rotate(45deg); width: 250px; height: 250px; background: #f06292; border: 4px solid #4a2c2c; }
+        .envelope-flap { position: absolute; top:0; left:0; width:100%; height:120px; background: #f8bbd0; border: 4px solid #4a2c2c; border-top:none; clip-path: polygon(0 0, 50% 100%, 100% 0); transform-origin: top; transition: 0.6s; z-index: 30; }
+        .envelope-wrapper.open .envelope-flap { transform: rotateX(180deg); z-index: 1; }
+        .wax-seal { position: absolute; top: 90px; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; background: #d32f2f; border-radius: 50%; border: 3px solid #b71c1c; z-index: 35; display: flex; align-items: center; justify-content: center; color: rgba(0,0,0,0.3); transition: opacity 0.3s; }
+        .envelope-wrapper.open .wax-seal { opacity: 0; }
+        
+        /* Letter */
+        .letter-content { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 90%; height: 95%; background: white; border: 3px solid #333; border-radius: 8px; padding: 20px; z-index: 10; transition: bottom 1s cubic-bezier(0.68, -0.55, 0.265, 1.55); opacity: 0; display: flex; flex-direction: column; }
+        .envelope-wrapper.open .letter-content { bottom: 150px; height: 450px; width: 340px; opacity: 1; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+
+        /* --- THEME: THREAT (HACKER) --- */
+        .theme-threat { background: #000; color: #ff0000; font-family: 'Share Tech Mono', monospace; }
+        .glitch-box { border: 2px solid red; padding: 20px; animation: glitch 0.3s infinite; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
+        @keyframes glitch { 0% { transform: translate(0) } 20% { transform: translate(-2px, 2px) } 40% { transform: translate(-2px, -2px) } 60% { transform: translate(2px, 2px) } 80% { transform: translate(2px, -2px) } 100% { transform: translate(0) } }
+        .typing-cursor { border-right: 10px solid red; animation: blink 0.5s step-end infinite; }
+        @keyframes blink { 50% { border-color: transparent } }
+
+        /* --- THEME: STANDARD --- */
+        .theme-standard { background: #f1f5f9; font-family: 'Inter', sans-serif; color: #1e293b; }
+        .doc-paper { background: white; max-width: 600px; margin: 40px auto; padding: 40px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-top: 4px solid #fbbf24; position: relative; }
+        .confidential-stamp { position: absolute; top: -10px; right: 20px; background: #fbbf24; color: black; font-weight: bold; padding: 4px 8px; font-size: 10px; letter-spacing: 1px; }
+
+        /* --- REELS SCROLLING TEXT --- */
+        .reels-container { flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; mask-image: linear-gradient(transparent, black 20%, black 80%, transparent); }
+        .reel-line { font-family: 'Patrick Hand', cursive; font-size: 1.5rem; text-align: center; padding: 10px; opacity: 0.2; transform: scale(0.9); transition: 0.8s; position: absolute; width: 100%; }
+        .reel-line.active { opacity: 1; transform: scale(1.1); color: #d81b60; position: relative; font-weight: bold; }
+        .reel-line.past { opacity: 0; transform: translateY(-50px); position: absolute; }
+
+        /* --- DASHBOARD --- */
+        .dash-layout { display: flex; height: 100vh; background: #f8fafc; font-family: 'Inter', sans-serif; }
+        .sidebar { width: 260px; background: #0f172a; color: #94a3b8; display: flex; flex-direction: column; }
+        .nav-btn { width: 100%; text-align: left; padding: 12px 20px; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+        .nav-btn:hover { background: #1e293b; color: white; }
+        .nav-btn.active { background: #4f46e5; color: white; }
+        .main-content { flex: 1; overflow-y: auto; padding: 30px; }
+        .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
-    <!-- === PRELOADER SCREEN === -->
+    <!-- === PRELOADER === -->
     <div id="init-loader">
-        <div class="loader-heart"><i class="fas fa-heart"></i></div>
-        <p id="loading-text">LOADING...</p>
+        <div class="loader-icon text-indigo-500"><i class="fas fa-satellite-dish"></i></div>
+        <p id="loading-text" class="mt-4 font-bold text-slate-500 tracking-widest text-sm font-mono">INITIALIZING SYSTEM...</p>
     </div>
 
-    <!-- === VIEWER (THE CARTOON SCENE) === -->
-    <div id="viewer-app" class="hidden h-screen w-screen overflow-hidden relative">
+    <!-- === VIEWER APP === -->
+    <div id="viewer-app" class="hidden w-screen h-screen relative flex items-center justify-center">
         
-        <div class="desk-scene">
-            <div class="book-stack"><div class="book"></div><div class="book"></div><div class="book"></div><div class="book"></div></div>
-            <div class="pencil"></div>
-        </div>
-
-        <div class="envelope-stage">
-            <!-- Envelope wrapper (Starts hidden, pops in when ready) -->
-            <div id="love-envelope" class="envelope-wrapper" onclick="openLetter()">
-                <div class="envelope-flap"></div>
-                <div class="wax-seal"><i class="fas fa-heart"></i></div>
-                <div class="envelope-body"></div>
-                
-                <div class="letter-content" onclick="event.stopPropagation()">
-                    <div class="text-center font-bold text-pink-400 text-lg mb-2">For You ❤️</div>
-                    <div id="reels-area" class="reels-container"></div>
-                    <div class="text-center mt-auto pt-4">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Secure Message</p>
+        <!-- UI: CARTOON LOVE -->
+        <div id="ui-proposal" class="hidden w-full h-full relative">
+            <div class="desk-scene">
+                <div class="book-stack"><div class="book"></div><div class="book"></div></div>
+                <div class="pencil"></div>
+            </div>
+            <div class="envelope-stage h-full flex flex-col items-center justify-center perspective-1000">
+                <div id="love-envelope" class="envelope-wrapper" onclick="openLetter()">
+                    <div class="envelope-flap"></div>
+                    <div class="wax-seal"><i class="fas fa-heart"></i></div>
+                    <div class="envelope-body"></div>
+                    <div class="letter-content" onclick="event.stopPropagation()">
+                        <div class="text-center font-bold text-pink-400 text-lg mb-2">For You ❤️</div>
+                        <div id="reels-area" class="reels-container"></div>
+                        <div class="text-center mt-auto text-[10px] text-slate-400 font-bold uppercase">End of Message</div>
                     </div>
                 </div>
+                <p id="tap-hint" class="text-slate-500 font-bold mt-8 animate-bounce">Tap to Open</p>
             </div>
-
-            <!-- Hint Text -->
-            <p id="tap-hint" class="text-center mt-12 text-slate-500 font-bold animate-bounce cursor-pointer" onclick="openLetter()">
-                <i class="fas fa-hand-pointer mr-2"></i> Tap to Open
-            </p>
         </div>
 
-        <!-- ERROR UI -->
-        <div id="viewer-error" class="hidden absolute inset-0 z-50 bg-slate-900/90 flex flex-col items-center justify-center text-white p-8 text-center">
-            <i class="fas fa-skull text-6xl text-red-500 mb-4"></i>
-            <h2 class="text-3xl font-bold font-['Bangers'] tracking-wide text-red-400">MESSAGE GONE</h2>
-            <p id="error-msg" class="text-slate-400 mt-2 font-mono">This message has self-destructed.</p>
+        <!-- UI: THREAT / HACKER -->
+        <div id="ui-threat" class="hidden w-full h-full bg-black flex items-center justify-center p-4">
+            <div class="max-w-2xl w-full">
+                <div class="glitch-box mb-8 text-center">
+                    <h1 class="text-6xl font-bold uppercase tracking-widest">WARNING</h1>
+                </div>
+                <div class="font-mono text-xl text-red-500 leading-relaxed">
+                    <span class="text-xs text-red-800 block mb-4">/// INCOMING ENCRYPTED STREAM ///</span>
+                    <p id="threat-text" class="typing-cursor whitespace-pre-wrap"></p>
+                </div>
+                <div class="mt-8 text-xs text-red-900 font-mono">
+                    IP TRACE INITIATED: <span id="trace-ip">DETECTING...</span>
+                </div>
+            </div>
         </div>
 
+        <!-- UI: STANDARD DOC -->
+        <div id="ui-standard" class="hidden w-full h-full bg-slate-100 overflow-y-auto p-4">
+            <div class="doc-paper">
+                <div class="confidential-stamp">CONFIDENTIAL</div>
+                <div class="flex items-center justify-between border-b pb-4 mb-4">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-800">Secure Memorandum</h1>
+                        <p class="text-slate-400 text-xs">ID: <span id="doc-id">--</span></p>
+                    </div>
+                    <i class="fas fa-file-contract text-4xl text-slate-300"></i>
+                </div>
+                <div class="prose prose-slate max-w-none">
+                    <p id="standard-text" class="whitespace-pre-wrap text-lg text-slate-700"></p>
+                </div>
+                <div class="mt-8 pt-4 border-t text-center text-xs text-red-500 font-bold uppercase">
+                    <i class="fas fa-fire mr-1"></i> Self-Destruct Sequence Active
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEWER ERROR -->
+        <div id="viewer-error" class="hidden absolute inset-0 z-50 bg-slate-900/95 flex flex-col items-center justify-center text-white text-center p-8">
+            <i class="fas fa-ban text-6xl text-red-500 mb-6"></i>
+            <h2 class="text-4xl font-bold text-red-400 mb-2">ACCESS DENIED</h2>
+            <p id="error-msg" class="text-slate-500 font-mono">This message has been burned.</p>
+        </div>
+
+        <!-- MEDIA -->
         <div id="youtube-player" class="hidden"></div>
         <audio id="bg-audio" class="hidden"></audio>
     </div>
 
-    <!-- === ADMIN DASHBOARD === -->
-    <div id="dashboard-app" class="hidden min-h-screen bg-slate-50 font-sans">
-        <div class="max-w-5xl mx-auto p-4 md:p-8">
-            <header class="flex justify-between items-center mb-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <h1 class="text-2xl font-bold text-slate-800"><span class="text-indigo-600">Secure</span>Admin</h1>
-                <button onclick="logout()" class="text-sm font-bold text-slate-500 hover:text-red-500">LOGOUT</button>
-            </header>
+    <!-- === DASHBOARD APP === -->
+    <div id="dashboard-app" class="hidden dash-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="h-20 flex items-center px-6 border-b border-slate-800">
+                <span class="font-bold text-white text-lg">Secure<span class="text-indigo-500">Ops</span></span>
+            </div>
+            <nav class="flex-1 py-4 space-y-1">
+                <button onclick="nav('overview')" id="btn-overview" class="nav-btn active"><i class="fas fa-chart-pie w-6"></i> Overview</button>
+                <button onclick="nav('create')" id="btn-create" class="nav-btn"><i class="fas fa-plus-circle w-6"></i> New Secret</button>
+                <button onclick="nav('logs')" id="btn-logs" class="nav-btn"><i class="fas fa-list-ul w-6"></i> Logs</button>
+            </nav>
+            <div class="p-4 border-t border-slate-800">
+                <button onclick="logout()" class="text-xs font-bold hover:text-white">SIGNOUT</button>
+            </div>
+        </aside>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="dash-card p-6">
-                        <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-pen-fancy text-indigo-500"></i> Compose
-                        </h2>
-                        
-                        <form id="create-form" class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="theme" value="proposal" checked class="peer sr-only">
-                                    <div class="p-3 border-2 rounded-lg text-center peer-checked:border-pink-500 peer-checked:bg-pink-50 transition">
-                                        <i class="fas fa-heart text-pink-500 block text-xl mb-1"></i>
-                                        <span class="text-xs font-bold text-slate-600">Love Letter</span>
-                                    </div>
-                                </label>
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="theme" value="text" class="peer sr-only">
-                                    <div class="p-3 border-2 rounded-lg text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition">
-                                        <i class="fas fa-file-alt text-indigo-500 block text-xl mb-1"></i>
-                                        <span class="text-xs font-bold text-slate-600">Standard</span>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div>
-                                <textarea id="secret-content" rows="6" class="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition font-medium" placeholder="Write your letter here... Line by line." required></textarea>
-                            </div>
-
-                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <p class="text-xs font-bold text-slate-500 uppercase mb-3">Background Audio</p>
-                                <div class="space-y-3">
-                                    <input type="url" id="meta-youtube" class="w-full p-2 border rounded text-sm" placeholder="YouTube URL (e.g. youtube.com/watch?v=...)">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-xs text-slate-400 font-bold">OR</span>
-                                        <label class="flex-1 cursor-pointer bg-white border border-slate-300 rounded px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 transition">
-                                            <i class="fas fa-upload mr-2"></i> <span id="file-label">Upload MP3</span>
-                                            <input type="file" id="file-upload" class="hidden" accept="audio/*">
-                                        </label>
-                                    </div>
-                                    <input type="hidden" id="uploaded-url">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="text-xs font-bold text-slate-500 uppercase">View Limit</label>
-                                    <input type="number" id="secret-views" value="1" class="w-full p-2 border rounded">
-                                </div>
-                                <div>
-                                    <label class="text-xs font-bold text-slate-500 uppercase">Timer (Sec)</label>
-                                    <input type="number" id="secret-timer" value="0" class="w-full p-2 border rounded">
-                                </div>
-                            </div>
-
-                            <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition">Create & Get Link</button>
-                        </form>
-                    </div>
-
-                    <div id="secret-result" class="hidden bg-emerald-50 border-2 border-emerald-100 rounded-xl p-6 text-center animate-bounce">
-                        <i class="fas fa-check-circle text-4xl text-emerald-500 mb-2"></i>
-                        <h3 class="font-bold text-emerald-800 mb-2">Secret Ready!</h3>
-                        <input type="text" id="result-link" readonly class="w-full p-3 bg-white border border-emerald-200 rounded-lg text-center font-mono text-sm text-emerald-600 select-all" onclick="this.select()">
-                    </div>
-                </div>
-
-                <div class="space-y-6">
-                    <div class="dash-card p-6 text-center">
+        <!-- MAIN -->
+        <main class="main-content">
+            <!-- VIEW: OVERVIEW -->
+            <div id="view-overview" class="space-y-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-slate-800">Mission Status</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card">
                         <p class="text-xs font-bold text-slate-400 uppercase">Active Secrets</p>
-                        <p id="stat-active" class="text-4xl font-black text-slate-800 my-2">--</p>
+                        <p id="stat-active" class="text-4xl font-bold text-slate-900 mt-2">--</p>
                     </div>
-                     <div class="dash-card p-6 text-center">
-                        <p class="text-xs font-bold text-slate-400 uppercase">Total Views</p>
-                        <p id="stat-views" class="text-4xl font-black text-indigo-600 my-2">--</p>
+                    <div class="card">
+                        <p class="text-xs font-bold text-slate-400 uppercase">Total Interceptions</p>
+                        <p id="stat-views" class="text-4xl font-bold text-indigo-600 mt-2">--</p>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <!-- VIEW: CREATE -->
+            <div id="view-create" class="hidden animate-fade-in max-w-2xl">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">Deploy New Asset</h2>
+                <div class="card">
+                    <form id="create-form" class="space-y-6">
+                        <!-- PRESET SELECTOR -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="preset" value="proposal" checked class="peer sr-only" onchange="setPreset('proposal')">
+                                <div class="p-3 border-2 rounded-lg text-center peer-checked:border-pink-500 peer-checked:bg-pink-50 hover:bg-slate-50 transition">
+                                    <i class="fas fa-heart text-pink-500 mb-1"></i><br><span class="text-xs font-bold">Love Letter</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="preset" value="threat" class="peer sr-only" onchange="setPreset('threat')">
+                                <div class="p-3 border-2 rounded-lg text-center peer-checked:border-red-600 peer-checked:bg-red-50 hover:bg-slate-50 transition">
+                                    <i class="fas fa-user-secret text-red-600 mb-1"></i><br><span class="text-xs font-bold">Threat</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="preset" value="text" class="peer sr-only" onchange="setPreset('text')">
+                                <div class="p-3 border-2 rounded-lg text-center peer-checked:border-indigo-600 peer-checked:bg-indigo-50 hover:bg-slate-50 transition">
+                                    <i class="fas fa-file-alt text-indigo-600 mb-1"></i><br><span class="text-xs font-bold">Standard</span>
+                                </div>
+                            </label>
+                        </div>
+                        <input type="hidden" id="secret-type" value="proposal">
+
+                        <!-- CONTENT -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Message Content</label>
+                            <textarea id="secret-content" rows="6" class="w-full p-3 border-2 border-slate-200 rounded-lg focus:border-indigo-500 outline-none font-mono" placeholder="Enter confidential data..." required></textarea>
+                        </div>
+
+                        <!-- AUDIO -->
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-3">Audio Enhancement</label>
+                            <div class="space-y-3">
+                                <input type="url" id="meta-youtube" class="w-full p-2 border rounded text-sm" placeholder="YouTube URL">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-slate-400">OR</span>
+                                    <label class="flex-1 cursor-pointer bg-white border px-3 py-2 rounded text-sm text-slate-600 hover:bg-slate-100 text-center">
+                                        <i class="fas fa-upload mr-2"></i> <span id="file-label">Upload MP3</span>
+                                        <input type="file" id="file-upload" class="hidden" accept="audio/*">
+                                    </label>
+                                </div>
+                                <input type="hidden" id="uploaded-url">
+                            </div>
+                        </div>
+
+                        <!-- SETTINGS -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-xs font-bold text-slate-500">Max Views</label><input type="number" id="secret-views" value="1" class="w-full p-2 border rounded"></div>
+                            <div><label class="text-xs font-bold text-slate-500">Timer (Sec)</label><input type="number" id="secret-timer" value="0" class="w-full p-2 border rounded"></div>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Deploy Secret</button>
+                    </form>
+                    
+                    <!-- RESULT -->
+                    <div id="secret-result" class="hidden mt-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <p class="text-emerald-800 font-bold mb-2">Link Generated:</p>
+                        <input type="text" id="result-link" readonly class="w-full p-2 border rounded text-sm font-mono select-all" onclick="this.select()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: LOGS -->
+            <div id="view-logs" class="hidden animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800">Surveillance Logs</h2>
+                    <button onclick="loadLogs()" class="text-indigo-600 text-sm font-bold hover:underline"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+                <div class="card overflow-hidden p-0">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 font-bold border-b">
+                            <tr><th class="p-4">Type</th><th class="p-4">Created</th><th class="p-4">Views</th><th class="p-4">Status</th><th class="p-4">Action</th></tr>
+                        </thead>
+                        <tbody id="logs-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+                <!-- LOG MODAL -->
+                <div id="log-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+                        <div class="p-4 border-b bg-slate-50 flex justify-between font-bold text-slate-700">
+                            <span>Access History</span>
+                            <button onclick="document.getElementById('log-modal').classList.add('hidden')" class="text-red-500">Close</button>
+                        </div>
+                        <div id="log-list" class="p-4 max-h-80 overflow-y-auto space-y-2 text-xs font-mono"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- === AUTH SCREEN === -->
-    <div id="auth-app" class="hidden fixed inset-0 bg-white flex items-center justify-center p-4">
-        <form id="auth-form" class="max-w-sm w-full space-y-4 text-center">
-            <h2 class="text-2xl font-bold text-slate-800">Admin Access</h2>
-            <input type="text" id="auth-user" placeholder="Username" class="w-full p-3 border-2 border-slate-200 rounded-xl outline-none">
-            <input type="password" id="auth-pass" placeholder="Password" class="w-full p-3 border-2 border-slate-200 rounded-xl outline-none">
-            <button class="w-full py-3 bg-slate-900 text-white font-bold rounded-xl">Login</button>
+    <!-- === AUTH APP === -->
+    <div id="auth-app" class="hidden fixed inset-0 bg-slate-100 flex items-center justify-center p-4 font-sans">
+        <form id="auth-form" class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
+            <div class="w-16 h-16 bg-slate-900 rounded-full mx-auto flex items-center justify-center text-white text-2xl mb-6">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">Restricted Access</h2>
+            <input type="text" id="auth-user" placeholder="Agent ID" class="w-full mb-3 p-3 border rounded-lg">
+            <input type="password" id="auth-pass" placeholder="Passcode" class="w-full mb-4 p-3 border rounded-lg">
+            <button class="w-full py-3 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800">Authenticate</button>
         </form>
     </div>
 
-    <!-- === APP LOGIC === -->
+    <!-- === LOGIC === -->
     <script>
-        // Load YouTube API
-        var tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
+        // --- CONFIG & UTILS ---
+        var tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
         var ytPlayer; function onYouTubeIframeAPIReady() {}
 
         const API = '/api';
         const urlParams = new URLSearchParams(location.search);
         const secretId = urlParams.get('id');
         let token = localStorage.getItem('admin_token');
-        let letterLines = [];
         let lineInterval;
 
-        // --- PRELOADER STATE MANAGER ---
-        const loadingStatus = document.getElementById('loading-text');
-        
-        function updateLoader(text) {
-            loadingStatus.innerText = text;
-        }
+        const loader = {
+            el: document.getElementById('init-loader'),
+            txt: document.getElementById('loading-text'),
+            show: (t) => { loader.el.classList.remove('fade-out'); loader.txt.innerText = t; },
+            hide: () => { loader.txt.innerText="READY"; setTimeout(()=>loader.el.classList.add('fade-out'), 500); }
+        };
 
-        async function initApp() {
-            updateLoader("STACKING BOOKS...");
-            await new Promise(r => setTimeout(r, 600)); // Fake delay for UX (book stacking)
+        // --- INIT ---
+        window.onload = async () => {
+            loader.show("ESTABLISHING CONNECTION...");
+            await new Promise(r => setTimeout(r, 800)); // Fake load time
 
             if(secretId) {
-                // VIEWER MODE
-                updateLoader("FINDING LETTER...");
-                await loadSecret(secretId); // This waits for fetch
+                // Viewer
+                loader.show("DECRYPTING MESSAGE...");
+                await loadSecret(secretId);
             } else {
-                // ADMIN MODE
-                updateLoader("CHECKING SECURITY...");
+                // Admin
                 if(token) {
-                    await loadStats(); // Verify token by fetching stats
-                    finishLoading('dashboard');
+                    loader.show("VERIFYING CREDENTIALS...");
+                    await loadOverview();
+                    document.getElementById('dashboard-app').classList.remove('hidden');
+                    loader.hide();
                 } else {
-                    finishLoading('auth');
+                    document.getElementById('auth-app').classList.remove('hidden');
+                    loader.hide();
                 }
             }
-        }
-
-        function finishLoading(targetApp) {
-            updateLoader("READY!");
-            setTimeout(() => {
-                document.getElementById('init-loader').classList.add('fade-out');
-                
-                if(targetApp === 'viewer') {
-                    document.getElementById('viewer-app').classList.remove('hidden');
-                    document.body.classList.add('loaded'); // Fade in body bg
-                    // Pop animation for envelope
-                    setTimeout(() => document.getElementById('love-envelope').classList.add('popped'), 300);
-                } 
-                else if(targetApp === 'dashboard') document.getElementById('dashboard-app').classList.remove('hidden');
-                else document.getElementById('auth-app').classList.remove('hidden');
-            }, 500);
-        }
-
-        window.onload = initApp;
+        };
 
         // --- VIEWER LOGIC ---
         async function loadSecret(id) {
             try {
-                // 1. Fetch Data
                 const res = await fetch(`${API}/secret/${id}`);
                 const data = await res.json();
                 
                 if(data.error) {
-                    finishLoading('viewer'); // Show app but overlay error
+                    document.getElementById('viewer-app').classList.remove('hidden');
                     document.getElementById('viewer-error').classList.remove('hidden');
                     document.getElementById('error-msg').innerText = data.error;
+                    loader.hide();
                     return;
                 }
 
-                // 2. Prepare Assets (Preload Audio/Images)
-                updateLoader("PREPARING MUSIC...");
+                // Setup Metadata (Audio)
                 const meta = data.metadata || {};
+                loader.show("BUFFERING ASSETS...");
                 
-                // Preload Audio File if exists
                 if(meta.audioUrl) {
-                    const audio = new Audio();
-                    audio.src = meta.audioUrl;
                     document.getElementById('bg-audio').src = meta.audioUrl;
-                    // We try to load metadata
-                    await new Promise((resolve) => {
-                        audio.onloadedmetadata = resolve;
-                        audio.onerror = resolve; // Continue even if error
-                        setTimeout(resolve, 3000); // Timeout fallback
-                    });
                 }
-                
-                // Prepare Text
-                updateLoader("WRITING LINES...");
-                letterLines = data.content.split('\n').filter(l => l.trim().length > 0);
-                const container = document.getElementById('reels-area');
-                letterLines.forEach((text, i) => {
-                    const p = document.createElement('p');
-                    p.className = `reel-line`;
-                    p.innerText = text;
-                    container.appendChild(p);
-                });
-
-                // Init YouTube
                 if(meta.youtubeId) {
                     ytPlayer = new YT.Player('youtube-player', {
                         height: '0', width: '0', videoId: meta.youtubeId,
@@ -452,110 +367,167 @@
                     });
                 }
 
-                // 3. DONE
-                finishLoading('viewer');
+                // Render UI based on Type
+                document.getElementById('viewer-app').classList.remove('hidden');
+                
+                if(data.type === 'proposal') {
+                    // LOVE LETTER
+                    document.body.className = "theme-proposal loaded";
+                    document.getElementById('ui-proposal').classList.remove('hidden');
+                    
+                    // Prepare Reels Lines
+                    const lines = data.content.split('\n').filter(l => l.trim().length > 0);
+                    const container = document.getElementById('reels-area');
+                    lines.forEach(l => {
+                        const p = document.createElement('p'); p.className="reel-line"; p.innerText=l; container.appendChild(p);
+                    });
+                    
+                    // Pop animation
+                    setTimeout(() => document.getElementById('love-envelope').classList.add('popped'), 100);
 
-            } catch(e) {
-                alert("Connection Failed");
-                finishLoading('viewer');
-            }
+                } else if (data.type === 'threat') {
+                    // HACKER MODE
+                    document.body.className = "theme-threat loaded";
+                    document.getElementById('ui-threat').classList.remove('hidden');
+                    
+                    // Typewriter
+                    const el = document.getElementById('threat-text');
+                    let i = 0;
+                    function type() { 
+                        if(i < data.content.length) { el.textContent += data.content.charAt(i); i++; setTimeout(type, 50); } 
+                    }
+                    type();
+                    fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>document.getElementById('trace-ip').innerText=d.ip);
+
+                } else {
+                    // STANDARD DOC
+                    document.body.className = "theme-standard loaded";
+                    document.getElementById('ui-standard').classList.remove('hidden');
+                    document.getElementById('standard-text').textContent = data.content;
+                    document.getElementById('doc-id').textContent = id.substring(0,8).toUpperCase();
+                }
+
+                loader.hide();
+
+            } catch(e) { loader.show("ERROR: CONNECTION LOST"); }
         }
 
         function openLetter() {
-            const wrapper = document.getElementById('love-envelope');
-            const hint = document.getElementById('tap-hint');
+            const wrap = document.getElementById('love-envelope');
+            if(wrap.classList.contains('open')) return;
+            wrap.classList.add('open');
+            document.getElementById('tap-hint').classList.add('hidden');
             
-            if(wrapper.classList.contains('open')) return; 
-
-            wrapper.classList.add('open');
-            hint.classList.add('hidden');
-
-            // Play Audio
+            // Audio
             if(ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
-            else document.getElementById('bg-audio').play().catch(e=>console.log("Audio block",e));
+            else document.getElementById('bg-audio').play().catch(e=>{});
 
-            setTimeout(startReels, 1000);
-        }
-
-        function startReels() {
-            const els = document.querySelectorAll('.reel-line');
-            if(els.length === 0) return;
-            let idx = 0;
-            els[0].classList.add('active'); // Show first
-
-            lineInterval = setInterval(() => {
-                els[idx].classList.remove('active');
-                els[idx].classList.add('past');
-                idx++;
-                if(idx >= els.length) {
-                    clearInterval(lineInterval);
-                    const final = document.createElement('p');
-                    final.innerHTML = "❤️";
-                    final.className = "reel-line active text-4xl";
-                    document.getElementById('reels-area').appendChild(final);
-                    return;
-                }
-                els[idx].classList.add('active');
-            }, 3000);
+            // Reels
+            setTimeout(() => {
+                const els = document.querySelectorAll('.reel-line');
+                if(!els.length) return;
+                let i = 0;
+                els[0].classList.add('active');
+                lineInterval = setInterval(() => {
+                    els[i].classList.remove('active'); els[i].classList.add('past');
+                    i++;
+                    if(i>=els.length) { clearInterval(lineInterval); return; }
+                    els[i].classList.add('active');
+                }, 3000);
+            }, 800);
         }
 
         // --- DASHBOARD LOGIC ---
-        document.getElementById('file-upload').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if(!file) return;
-            document.getElementById('upload-status').innerText = "Uploading...";
-            document.getElementById('upload-status').classList.remove('hidden');
-
-            const res = await fetch(`${API}/upload`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'X-File-Name': file.name },
-                body: file
+        function nav(view) {
+            ['overview', 'create', 'logs'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                document.getElementById(`btn-${v}`).classList.remove('active');
             });
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.getElementById(`btn-${view}`).classList.add('active');
+            if(view==='logs') loadLogs();
+        }
+
+        function setPreset(p) { document.getElementById('secret-type').value = p; }
+
+        document.getElementById('file-upload').addEventListener('change', async (e) => {
+            const f = e.target.files[0]; if(!f) return;
+            document.getElementById('file-label').innerText = "Uploading...";
+            const res = await fetch(`${API}/upload`, { method:'POST', headers:{'Authorization':`Bearer ${token}`, 'X-File-Name':f.name}, body:f });
             const d = await res.json();
-            if(d.url) {
-                document.getElementById('uploaded-url').value = d.url;
-                document.getElementById('file-label').innerText = "File Attached!";
-                document.getElementById('upload-status').innerText = "Upload Complete!";
-            }
+            if(d.url) { document.getElementById('uploaded-url').value = d.url; document.getElementById('file-label').innerText = "Attached!"; }
         });
 
         document.getElementById('create-form').onsubmit = async (e) => {
             e.preventDefault();
+            const type = document.getElementById('secret-type').value;
             const content = document.getElementById('secret-content').value;
             const views = document.getElementById('secret-views').value;
             const timer = document.getElementById('secret-timer').value;
-            const ytUrl = document.getElementById('meta-youtube').value;
-            const upUrl = document.getElementById('uploaded-url').value;
+            const yt = document.getElementById('meta-youtube').value;
+            const up = document.getElementById('uploaded-url').value;
+            
             let ytId = '';
-            if(ytUrl) {
-                const m = ytUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11}).*/);
-                if(m) ytId = m[1];
-            }
+            if(yt) { const m = yt.match(/(?:v=|\/)([0-9A-Za-z_-]{11}).*/); if(m) ytId = m[1]; }
 
             const res = await fetch(`${API}/secret`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    type: 'proposal', 
-                    content, 
-                    max_views: parseInt(views), 
-                    expiry_seconds: parseInt(timer),
-                    metadata: { youtubeId: ytId, audioUrl: upUrl }
-                })
+                headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+                body: JSON.stringify({ type, content, max_views:parseInt(views), expiry_seconds:parseInt(timer), metadata:{youtubeId:ytId, audioUrl:up} })
             });
             const d = await res.json();
             document.getElementById('result-link').value = `${location.origin}?id=${d.id}`;
             document.getElementById('secret-result').classList.remove('hidden');
-            loadStats();
+            loadOverview();
         };
 
-        async function loadStats() {
+        async function loadOverview() {
             try {
                 const res = await fetch(`${API}/dashboard`, { headers: { 'Authorization': `Bearer ${token}` } });
                 const d = await res.json();
                 document.getElementById('stat-active').innerText = d.stats.active_secrets;
                 document.getElementById('stat-views').innerText = d.stats.total_views;
-            } catch(e) {}
+            } catch(e){}
+        }
+
+        async function loadLogs() {
+            const tbody = document.getElementById('logs-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Loading...</td></tr>';
+            const res = await fetch(`${API}/secrets-list`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const d = await res.json();
+            tbody.innerHTML = '';
+            
+            d.secrets.forEach(s => {
+                const date = new Date(s.created_at * 1000).toLocaleDateString();
+                const status = s.is_active ? '<span class="text-green-600 font-bold">Active</span>' : '<span class="text-red-500">Burned</span>';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b">
+                        <td class="p-4 font-bold capitalize">${s.type}</td>
+                        <td class="p-4 font-mono text-xs">${date}</td>
+                        <td class="p-4 text-center">${s.view_count}/${s.max_views}</td>
+                        <td class="p-4 text-xs">${status}</td>
+                        <td class="p-4"><button onclick="showLogDetails('${s.id}')" class="text-indigo-600 font-bold text-xs hover:underline">View IPs</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function showLogDetails(id) {
+            document.getElementById('log-modal').classList.remove('hidden');
+            const list = document.getElementById('log-list');
+            list.innerHTML = 'Fetching...';
+            const res = await fetch(`${API}/secret/logs/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const d = await res.json();
+            list.innerHTML = '';
+            if(!d.logs.length) list.innerHTML = '<p class="text-slate-400 italic">No access records yet.</p>';
+            d.logs.forEach(l => {
+                list.innerHTML += `
+                    <div class="border-b pb-1">
+                        <div class="flex justify-between font-bold text-slate-700"><span>${l.ip_address}</span><span>${l.country}</span></div>
+                        <div class="text-slate-500">${new Date(l.viewed_at*1000).toLocaleString()}</div>
+                    </div>
+                `;
+            });
         }
 
         // --- AUTH ---
@@ -563,18 +535,12 @@
             e.preventDefault();
             const u = document.getElementById('auth-user').value;
             const p = document.getElementById('auth-pass').value;
-            
-            // Try Setup First
-            let res = await fetch(`${API}/setup`, { method:'POST', body: JSON.stringify({username:u, password:p}) });
-            if(res.status === 403) {
-                 res = await fetch(`${API}/login`, { method:'POST', body: JSON.stringify({username:u, password:p}) });
-            }
-            
+            let res = await fetch(`${API}/setup`, { method:'POST', body:JSON.stringify({username:u, password:p}) });
+            if(res.status===403) res = await fetch(`${API}/login`, { method:'POST', body:JSON.stringify({username:u, password:p}) });
             const d = await res.json();
             if(d.token) { localStorage.setItem('admin_token', d.token); location.reload(); }
-            else alert(d.error || "Login Failed");
+            else alert(d.error);
         };
-
         function logout() { localStorage.removeItem('admin_token'); location.reload(); }
     </script>
 </body>
