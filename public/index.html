@@ -5,299 +5,253 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secret Messenger</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .hidden { display: none; }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .blur-in { animation: blurIn 0.5s ease-out; }
-        @keyframes blurIn { from { filter: blur(10px); opacity: 0; } to { filter: blur(0); opacity: 1; } }
+        /* No fancy animations, just visibility toggles */
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen transition-colors duration-500">
+<body class="bg-gray-100 text-gray-900 min-h-screen font-sans">
 
-    <!-- === NOTIFICATIONS === -->
-    <div id="notification" class="fixed top-5 right-5 hidden px-6 py-4 rounded-lg shadow-xl text-white font-medium z-50 transition-all transform duration-300"></div>
+    <!-- ERROR BANNER (For Global Errors) -->
+    <div id="error-banner" class="hidden fixed top-0 left-0 w-full bg-red-600 text-white p-4 text-center font-bold z-50">
+        <span id="error-text">Unknown Error</span>
+        <button onclick="location.reload()" class="ml-4 underline">Reload</button>
+    </div>
 
-    <!-- === 1. SECRET VIEWER MODE (Clean, Mobile First) === -->
-    <div id="viewer-app" class="hidden w-full h-screen flex flex-col items-center justify-center p-4 bg-gray-900 text-white">
-        <div id="viewer-loading" class="animate-pulse flex flex-col items-center">
-            <svg class="w-12 h-12 text-indigo-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-            <p class="text-gray-400 tracking-widest text-sm uppercase">Decrypting Message...</p>
-        </div>
+    <!-- INITIAL LOADING SCREEN -->
+    <div id="init-screen" class="fixed inset-0 bg-white flex flex-col items-center justify-center z-40">
+        <div id="spinner" class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <h2 class="text-xl font-bold text-gray-700">Connecting to System...</h2>
+        <p class="text-gray-500 text-sm mt-2">If this takes longer than 5s, something is wrong.</p>
+    </div>
 
-        <div id="viewer-content" class="hidden w-full max-w-2xl blur-in text-center">
-            <div class="mb-8">
-                <span class="inline-block p-3 rounded-full bg-green-500/20 text-green-400 mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </span>
-                <h1 class="text-3xl font-bold mb-2">Secure Message</h1>
-                <p class="text-gray-400 text-sm">This message will self-destruct.</p>
-            </div>
+    <!-- === SECRET VIEWER === -->
+    <div id="viewer-app" class="hidden min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
+        <div class="max-w-md w-full text-center">
+            <h1 class="text-3xl font-bold mb-8 text-indigo-400">Secure Message</h1>
             
-            <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 relative overflow-hidden group">
-                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-                <!-- The Secret Content -->
-                <p id="secret-text" class="text-xl md:text-2xl font-mono leading-relaxed break-words select-all selection:bg-indigo-500 selection:text-white">
-                    --
-                </p>
+            <div id="viewer-content" class="hidden bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-xl break-words">
+                <p id="secret-text" class="text-xl font-mono select-all">--</p>
             </div>
 
-            <p id="viewer-timer" class="mt-8 text-gray-500 text-sm font-mono"></p>
-        </div>
+            <div id="viewer-error" class="hidden bg-red-900/50 p-6 rounded-lg border border-red-500 text-red-200">
+                <h2 class="text-xl font-bold mb-2">Message Unavailable</h2>
+                <p>This message has expired or reached its view limit.</p>
+            </div>
 
-        <div id="viewer-error" class="hidden text-center max-w-md">
-            <div class="text-6xl mb-4">💥</div>
-            <h2 class="text-2xl font-bold text-red-500 mb-2">Message Destroyed</h2>
-            <p class="text-gray-400">This secret link is invalid, expired, or has already been viewed by the maximum number of devices.</p>
-            <a href="/" class="mt-8 inline-block text-indigo-400 hover:text-indigo-300 underline">Go Home</a>
+            <a href="/" class="inline-block mt-8 text-gray-500 hover:text-white underline">Create your own secret</a>
         </div>
     </div>
 
-
-    <!-- === 2. ADMIN DASHBOARD MODE === -->
-    <div id="admin-app" class="hidden min-h-screen flex flex-col items-center justify-center p-4">
+    <!-- === ADMIN / DASHBOARD === -->
+    <div id="admin-app" class="hidden max-w-lg mx-auto p-4 mt-8">
         
-        <!-- Loading Spinner -->
-        <div id="loading" class="text-indigo-600 font-semibold animate-pulse flex flex-col items-center gap-2">
-            <svg class="animate-spin h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-sm tracking-widest uppercase">System Initializing</span>
+        <!-- HEADER -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold text-indigo-700">Secret Messenger</h1>
+            <button id="logout-btn" class="hidden px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Logout</button>
         </div>
 
-        <!-- Auth Forms -->
-        <div id="auth-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden hidden fade-in">
-            <div class="h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-            <div class="p-8">
-                <!-- Login -->
-                <div id="login-view" class="hidden">
-                    <h1 class="text-2xl font-bold mb-6 text-center text-gray-900">Admin Console</h1>
-                    <form id="login-form" class="space-y-4">
-                        <input type="text" id="login-user" class="w-full p-3 bg-gray-50 rounded border focus:border-indigo-500 outline-none" placeholder="Username" required>
-                        <input type="password" id="login-pass" class="w-full p-3 bg-gray-50 rounded border focus:border-indigo-500 outline-none" placeholder="Password" required>
-                        <button type="submit" class="w-full p-3 bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 transition">Login</button>
-                    </form>
-                </div>
-                <!-- Setup -->
-                <div id="setup-view" class="hidden">
-                    <h1 class="text-2xl font-bold mb-2 text-center text-gray-900">System Setup</h1>
-                    <p class="text-center text-gray-500 text-sm mb-6">Create master account.</p>
-                    <form id="setup-form" class="space-y-4">
-                        <input type="text" id="setup-user" class="w-full p-3 bg-gray-50 rounded border focus:border-blue-500 outline-none" placeholder="Master Username" required>
-                        <input type="password" id="setup-pass" class="w-full p-3 bg-gray-50 rounded border focus:border-blue-500 outline-none" placeholder="Master Password" required>
-                        <button type="submit" class="w-full p-3 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition">Create Account</button>
-                    </form>
+        <!-- 1. SETUP FORM -->
+        <div id="setup-view" class="hidden bg-white p-6 rounded shadow-md">
+            <h2 class="text-xl font-bold mb-4">First Time Setup</h2>
+            <form onsubmit="handleSetup(event)">
+                <input type="text" id="setup-user" placeholder="Master Username" class="w-full p-2 border rounded mb-3" required>
+                <input type="password" id="setup-pass" placeholder="Master Password" class="w-full p-2 border rounded mb-3" required>
+                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-bold">Initialize System</button>
+            </form>
+        </div>
+
+        <!-- 2. LOGIN FORM -->
+        <div id="login-view" class="hidden bg-white p-6 rounded shadow-md">
+            <h2 class="text-xl font-bold mb-4">Admin Login</h2>
+            <form onsubmit="handleLogin(event)">
+                <input type="text" id="login-user" placeholder="Username" class="w-full p-2 border rounded mb-3" required>
+                <input type="password" id="login-pass" placeholder="Password" class="w-full p-2 border rounded mb-3" required>
+                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded font-bold">Login</button>
+            </form>
+        </div>
+
+        <!-- 3. DASHBOARD -->
+        <div id="dashboard-view" class="hidden space-y-6">
+            <!-- Stats -->
+            <div class="bg-white p-4 rounded shadow flex justify-between">
+                <span>Active Secrets:</span>
+                <span id="stat-count" class="font-bold text-indigo-600">--</span>
+            </div>
+
+            <!-- Create Secret -->
+            <div class="bg-white p-6 rounded shadow">
+                <h3 class="text-lg font-bold mb-4">Create New Secret</h3>
+                <form onsubmit="handleCreate(event)">
+                    <textarea id="secret-content" rows="3" placeholder="Enter secret message..." class="w-full p-2 border rounded mb-4" required></textarea>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase">Max Views</label>
+                            <input type="number" id="secret-views" value="1" min="1" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase">Timer (Sec)</label>
+                            <select id="secret-timer" class="w-full p-2 border rounded">
+                                <option value="0">Burn Immediately</option>
+                                <option value="10">10 Seconds</option>
+                                <option value="60">1 Minute</option>
+                                <option value="3600">1 Hour</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-green-600 text-white p-3 rounded font-bold hover:bg-green-700">Generate Link</button>
+                </form>
+
+                <!-- Result -->
+                <div id="result-area" class="hidden mt-4 bg-green-50 p-4 border border-green-200 rounded">
+                    <p class="text-sm font-bold text-green-800 mb-1">Secret Link Ready:</p>
+                    <input type="text" id="result-link" readonly class="w-full p-2 border rounded text-sm bg-white" onclick="this.select()">
+                    <p class="text-xs text-green-600 mt-1">Share this link. It will self-destruct.</p>
                 </div>
             </div>
-        </div>
 
-        <!-- Main Dashboard -->
-        <div id="dashboard-container" class="w-full max-w-4xl hidden fade-in">
-            <header class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 flex justify-between items-center">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-900">Secret<span class="text-indigo-600">Admin</span></h2>
-                    <p id="welcome-msg" class="text-gray-500 text-sm">--</p>
-                </div>
-                <button id="logout-btn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-sm font-medium">Logout</button>
-            </header>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Create Secret Card -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
-                    <div class="flex items-center gap-2 mb-6">
-                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-800">Create New Secret</h3>
-                    </div>
-
-                    <form id="create-secret-form" class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-bold text-gray-500 uppercase mb-2">Secret Message</label>
-                            <textarea id="secret-content" rows="4" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" placeholder="Type your secret here..." required></textarea>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-bold text-gray-500 uppercase mb-2">Max Views (Devices)</label>
-                                <input type="number" id="secret-views" value="1" min="1" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-500 uppercase mb-2">Expires After (Once Opened)</label>
-                                <select id="secret-timer" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
-                                    <option value="0">Burn immediately after viewing</option>
-                                    <option value="10">10 Seconds</option>
-                                    <option value="60">1 Minute</option>
-                                    <option value="300">5 Minutes</option>
-                                    <option value="3600">1 Hour</option>
-                                    <option value="86400">24 Hours</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition transform active:scale-95">
-                            Generate Secret Link
-                        </button>
-                    </form>
-
-                    <!-- Result Box -->
-                    <div id="result-box" class="hidden mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-                        <p class="text-green-800 font-medium mb-2">Secret Created Successfully!</p>
-                        <div class="flex gap-2">
-                            <input type="text" id="result-link" readonly class="flex-grow p-2 bg-white border border-green-200 rounded text-sm text-gray-600">
-                            <button onclick="copyLink()" class="px-4 py-2 bg-green-600 text-white rounded text-sm font-bold hover:bg-green-700">Copy</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Stats / Danger -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-gray-400 text-sm uppercase mb-4">System Health</h3>
-                    <div class="flex justify-between items-center">
-                         <span class="text-gray-600">Active Secrets</span>
-                         <span id="stat-secrets" class="text-2xl font-bold text-indigo-600">--</span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
-                    <h3 class="font-bold text-red-400 text-sm uppercase mb-4">Danger Zone</h3>
-                    <button id="reset-btn" class="w-full py-2 bg-red-50 text-red-600 border border-red-200 rounded font-medium hover:bg-red-100">Ultimate Reset</button>
-                </div>
+            <!-- Reset -->
+            <div class="text-center">
+                <button onclick="handleReset()" class="text-red-500 text-sm underline">Factory Reset System</button>
             </div>
         </div>
     </div>
 
-    <!-- === JAVASCRIPT LOGIC === -->
     <script>
+        // CONFIG
         const API_URL = '/api';
         const urlParams = new URLSearchParams(window.location.search);
-        const secretId = urlParams.get('id'); // check for ?id=...
+        const secretId = urlParams.get('id');
 
-        // UI Elements
-        const notification = document.getElementById('notification');
-        const viewerApp = document.getElementById('viewer-app');
-        const adminApp = document.getElementById('admin-app');
-        
-        // --- ROUTING ---
-        if (secretId) {
-            // MODE: VIEWER
-            viewerApp.classList.remove('hidden');
-            loadSecret(secretId);
-        } else {
-            // MODE: ADMIN
-            adminApp.classList.remove('hidden');
-            initAdmin();
-        }
-
-        // --- NOTIFICATIONS ---
-        function showNotify(msg, type = 'success') {
-            const colors = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
-            notification.className = `fixed top-5 right-5 px-6 py-4 rounded-lg shadow-xl text-white font-medium z-50 transition-all transform duration-300 ${colors}`;
-            notification.innerText = msg;
-            notification.classList.remove('hidden');
-            setTimeout(() => notification.classList.add('hidden'), 3000);
-        }
-
-        // --- VIEWER LOGIC ---
-        async function loadSecret(id) {
-            try {
-                const res = await fetch(`${API_URL}/secret/${id}`);
-                const data = await res.json();
-
-                document.getElementById('viewer-loading').classList.add('hidden');
-
-                if (!res.ok) {
-                    document.getElementById('viewer-error').classList.remove('hidden');
-                    return;
-                }
-
-                // Show Content
-                document.getElementById('viewer-content').classList.remove('hidden');
-                document.getElementById('secret-text').innerText = data.content;
-
-                // Handle Timer UI if specific expiry
-                if (data.settings.expiry > 0) {
-                     const timerEl = document.getElementById('viewer-timer');
-                     timerEl.innerText = `This message is on a timer (${data.settings.expiry}s)`;
-                }
-
-            } catch (err) {
-                document.getElementById('viewer-loading').classList.add('hidden');
-                document.getElementById('viewer-error').classList.remove('hidden');
-            }
-        }
-
-        // --- ADMIN LOGIC ---
+        // STATE
         let token = localStorage.getItem('admin_token');
 
-        function initAdmin() {
-            if (token) {
-                loadDashboard();
-            } else {
-                checkStatus();
-            }
-        }
+        // --- CORE FUNCTIONS ---
 
+        // Robust Fetch Wrapper with Timeout
         async function apiCall(endpoint, method = 'GET', body = null) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second hard timeout
+
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-            const config = { method, headers };
+
+            const config = { method, headers, signal: controller.signal };
             if (body) config.body = JSON.stringify(body);
 
-            const res = await fetch(`${API_URL}${endpoint}`, config);
-            const contentType = res.headers.get('content-type');
-            if (!contentType || !contentType.includes('json')) {
-                if(!res.ok) throw new Error(`Status ${res.status}`);
-                return {}; 
+            try {
+                const res = await fetch(`${API_URL}${endpoint}`, config);
+                clearTimeout(timeoutId);
+                
+                const text = await res.text();
+                try {
+                    const data = JSON.parse(text);
+                    if (!res.ok) throw new Error(data.error || `Server Error ${res.status}`);
+                    return data;
+                } catch(e) {
+                    throw new Error(text || `Server Error ${res.status}`);
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') throw new Error("Server Timeout (8s)");
+                throw err;
             }
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Request failed');
-            return data;
         }
 
-        async function checkStatus() {
-            const loading = document.getElementById('loading');
-            const authContainer = document.getElementById('auth-container');
-            loading.classList.remove('hidden');
-            authContainer.classList.add('hidden');
+        function showError(msg) {
+            document.getElementById('init-screen').classList.add('hidden');
+            const banner = document.getElementById('error-banner');
+            document.getElementById('error-text').innerText = msg;
+            banner.classList.remove('hidden');
+        }
 
+        // --- INIT LOGIC ---
+
+        async function init() {
+            try {
+                if (secretId) {
+                    // VIEWER MODE
+                    document.getElementById('init-screen').classList.add('hidden');
+                    document.getElementById('viewer-app').classList.remove('hidden');
+                    await loadSecret(secretId);
+                } else {
+                    // ADMIN MODE
+                    document.getElementById('admin-app').classList.remove('hidden');
+                    if (token) {
+                        await loadDashboard();
+                    } else {
+                        await checkSystem();
+                    }
+                }
+            } catch (err) {
+                showError("Init Failed: " + err.message);
+            }
+        }
+
+        // --- VIEWER ---
+
+        async function loadSecret(id) {
+            try {
+                const data = await apiCall(`/secret/${id}`);
+                document.getElementById('viewer-content').classList.remove('hidden');
+                document.getElementById('secret-text').innerText = data.content;
+            } catch (err) {
+                document.getElementById('viewer-error').classList.remove('hidden');
+                // Don't show global error for 404/410, just local error
+            }
+        }
+
+        // --- ADMIN FLOWS ---
+
+        async function checkSystem() {
             try {
                 const data = await apiCall('/check-setup');
-                loading.classList.add('hidden');
-                authContainer.classList.remove('hidden');
-
+                document.getElementById('init-screen').classList.add('hidden');
                 if (data.setupRequired) {
                     document.getElementById('setup-view').classList.remove('hidden');
                 } else {
                     document.getElementById('login-view').classList.remove('hidden');
                 }
-            } catch (err) { loading.innerText = "Error: " + err.message; }
+            } catch (err) {
+                showError(err.message);
+            }
         }
 
         async function loadDashboard() {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('auth-container').classList.add('hidden');
-            document.getElementById('dashboard-container').classList.remove('hidden');
-
             try {
                 const data = await apiCall('/dashboard');
-                document.getElementById('welcome-msg').innerText = data.message;
-                document.getElementById('stat-secrets').innerText = data.stats.active_secrets;
+                document.getElementById('init-screen').classList.add('hidden');
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                document.getElementById('logout-btn').classList.remove('hidden');
+                
+                document.getElementById('stat-count').innerText = data.stats.active_secrets;
             } catch (err) {
-                if (err.message.includes('401') || err.message.includes('Session')) {
+                if (err.message.includes("401") || err.message.includes("Session") || err.message.includes("Token")) {
                     localStorage.removeItem('admin_token');
-                    token = null;
                     location.reload();
+                } else {
+                    showError(err.message);
                 }
             }
         }
 
-        // --- FORM HANDLERS (ADMIN) ---
+        // --- HANDLERS ---
 
-        document.getElementById('login-form').onsubmit = async (e) => {
+        async function handleSetup(e) {
+            e.preventDefault();
+            const u = document.getElementById('setup-user').value;
+            const p = document.getElementById('setup-pass').value;
+            try {
+                await apiCall('/setup', 'POST', { username: u, password: p });
+                alert("Setup Complete. Please Login.");
+                location.reload();
+            } catch(err) { alert(err.message); }
+        }
+
+        async function handleLogin(e) {
             e.preventDefault();
             const u = document.getElementById('login-user').value;
             const p = document.getElementById('login-pass').value;
@@ -305,27 +259,15 @@
                 const data = await apiCall('/login', 'POST', { username: u, password: p });
                 localStorage.setItem('admin_token', data.token);
                 token = data.token;
-                location.reload();
-            } catch (err) { showNotify(err.message, 'error'); }
-        };
+                loadDashboard();
+            } catch(err) { alert(err.message); }
+        }
 
-        document.getElementById('setup-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const u = document.getElementById('setup-user').value;
-            const p = document.getElementById('setup-pass').value;
-            try {
-                await apiCall('/setup', 'POST', { username: u, password: p });
-                showNotify("Setup Complete", 'success');
-                setTimeout(() => location.reload(), 1000);
-            } catch (err) { showNotify(err.message, 'error'); }
-        };
-
-        document.getElementById('create-secret-form').onsubmit = async (e) => {
+        async function handleCreate(e) {
             e.preventDefault();
             const content = document.getElementById('secret-content').value;
             const views = document.getElementById('secret-views').value;
             const timer = document.getElementById('secret-timer').value;
-
             try {
                 const data = await apiCall('/secret', 'POST', { 
                     content, 
@@ -333,44 +275,33 @@
                     expiry_seconds: parseInt(timer) 
                 });
                 
-                // Show Result
                 const link = `${window.location.origin}?id=${data.id}`;
                 document.getElementById('result-link').value = link;
-                document.getElementById('result-box').classList.remove('hidden');
-                showNotify("Secret Created!", 'success');
-                
-                // Reset Form
-                document.getElementById('secret-content').value = '';
+                document.getElementById('result-area').classList.remove('hidden');
                 
                 // Refresh Stats
-                const dbData = await apiCall('/dashboard');
-                document.getElementById('stat-secrets').innerText = dbData.stats.active_secrets;
+                const stats = await apiCall('/dashboard');
+                document.getElementById('stat-count').innerText = stats.stats.active_secrets;
+            } catch(err) { alert(err.message); }
+        }
 
-            } catch (err) { showNotify(err.message, 'error'); }
-        };
-
-        window.copyLink = () => {
-            const copyText = document.getElementById("result-link");
-            copyText.select();
-            document.execCommand("copy"); // Fallback for some browsers
-            navigator.clipboard.writeText(copyText.value);
-            showNotify("Link Copied!", 'success');
-        };
+        async function handleReset() {
+            if(!confirm("DELETE ALL DATA?")) return;
+            try {
+                await apiCall('/reset', 'DELETE');
+                localStorage.removeItem('admin_token');
+                alert("System Reset");
+                location.reload();
+            } catch(err) { alert(err.message); }
+        }
 
         document.getElementById('logout-btn').onclick = () => {
             localStorage.removeItem('admin_token');
             location.reload();
         };
 
-        document.getElementById('reset-btn').onclick = async () => {
-            if (!confirm("Delete EVERYTHING?")) return;
-            try {
-                await apiCall('/reset', 'DELETE');
-                alert("Reset Done");
-                localStorage.removeItem('admin_token');
-                location.reload();
-            } catch(e) { showNotify(e.message, 'error'); }
-        };
+        // START
+        init();
 
     </script>
 </body>
