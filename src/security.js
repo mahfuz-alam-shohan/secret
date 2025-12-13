@@ -1,4 +1,4 @@
-// src/security.js
+// src/security.js (Unchanged but included for completeness)
 
 export function generateSalt() {
   const array = new Uint8Array(16);
