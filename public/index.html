@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Messenger Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen flex flex-col items-center justify-center">
+
+    <!-- Notifications -->
+    <div id="notification" class="fixed top-5 right-5 hidden p-4 rounded shadow-lg text-white"></div>
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="w-full max-w-md p-8 bg-gray-800 rounded-lg shadow-xl border border-gray-700">
+        <h1 class="text-3xl font-bold mb-6 text-center text-emerald-400">Admin Access</h1>
+        
+        <!-- Login Form -->
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Username</label>
+                <input type="text" id="login-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Password</label>
+                <input type="password" id="login-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-emerald-500 focus:outline-none" required>
+            </div>
+            <button type="submit" class="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 rounded font-bold transition">Log In</button>
+            <p class="text-center text-sm text-gray-400 mt-4">
+                No account? <a href="#" id="show-register" class="text-emerald-400 hover:underline">Create one</a>
+            </p>
+        </form>
+
+        <!-- Register Form (Hidden by default) -->
+        <form id="register-form" class="space-y-4 hidden">
+            <div>
+                <label class="block text-sm font-medium mb-1">New Username</label>
+                <input type="text" id="reg-user" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">New Password</label>
+                <input type="password" id="reg-pass" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
+            </div>
+            <button type="submit" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 rounded font-bold transition">Create Account</button>
+            <p class="text-center text-sm text-gray-400 mt-4">
+                <a href="#" id="show-login" class="text-emerald-400 hover:underline">Back to Login</a>
+            </p>
+        </form>
+    </div>
+
+    <!-- Dashboard (Hidden by default) -->
+    <div id="dashboard-container" class="w-full max-w-4xl p-8 hidden">
+        <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-700">
+            <h2 class="text-2xl font-bold text-white">Dashboard</h2>
+            <button id="logout-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">Logout</button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Stats Card -->
+            <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                <h3 class="text-xl font-semibold mb-4 text-emerald-400">System Status</h3>
+                <p id="welcome-msg" class="mb-2">Loading...</p>
+                <div class="text-4xl font-bold mt-4" id="stat-count">--</div>
+                <div class="text-gray-400 text-sm">Active Sessions</div>
+            </div>
+
+            <!-- Bucket File List -->
+            <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                <h3 class="text-xl font-semibold mb-4 text-blue-400">R2 Bucket Files</h3>
+                <ul id="bucket-list" class="space-y-2 text-sm text-gray-300">
+                    <li>Loading files...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_URL = '/api'; // Assumes served from same domain or configured proxy
+
+        // DOM Elements
+        const authContainer = document.getElementById('auth-container');
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const notification = document.getElementById('notification');
+
+        // State
+        let token = localStorage.getItem('admin_token');
+
+        // Init
+        if (token) {
+            loadDashboard();
+        }
+
+        // Toggles
+        document.getElementById('show-register').onclick = (e) => {
+            e.preventDefault();
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+        };
+        document.getElementById('show-login').onclick = (e) => {
+            e.preventDefault();
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+        };
+
+        document.getElementById('logout-btn').onclick = () => {
+            localStorage.removeItem('admin_token');
+            token = null;
+            showAuth();
+        };
+
+        // Handlers
+        async function handleAuth(endpoint, body) {
+            try {
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                
+                if (!res.ok) throw new Error(data.error || 'Request failed');
+                
+                if (data.token) {
+                    localStorage.setItem('admin_token', data.token);
+                    token = data.token;
+                    loadDashboard();
+                } else {
+                    showNotify('Success: ' + data.message, 'bg-green-600');
+                    if (endpoint === '/register') {
+                        document.getElementById('show-login').click();
+                    }
+                }
+            } catch (err) {
+                showNotify(err.message, 'bg-red-600');
+            }
+        }
+
+        loginForm.onsubmit = (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-user').value;
+            const password = document.getElementById('login-pass').value;
+            handleAuth('/login', { username, password });
+        };
+
+        registerForm.onsubmit = (e) => {
+            e.preventDefault();
+            const username = document.getElementById('reg-user').value;
+            const password = document.getElementById('reg-pass').value;
+            handleAuth('/register', { username, password });
+        };
+
+        async function loadDashboard() {
+            authContainer.classList.add('hidden');
+            dashboardContainer.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${API_URL}/dashboard`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.status === 401) {
+                    throw new Error('Session expired');
+                }
+
+                const data = await res.json();
+                document.getElementById('welcome-msg').innerText = data.message;
+                document.getElementById('stat-count').innerText = data.stats.active_sessions;
+                
+                const list = document.getElementById('bucket-list');
+                list.innerHTML = '';
+                if (data.bucket_files && data.bucket_files.length > 0) {
+                    data.bucket_files.forEach(f => {
+                        const li = document.createElement('li');
+                        li.textContent = f;
+                        list.appendChild(li);
+                    });
+                } else {
+                    list.innerHTML = '<li>No files found in bucket.</li>';
+                }
+
+            } catch (err) {
+                showNotify(err.message, 'bg-red-600');
+                localStorage.removeItem('admin_token');
+                showAuth();
+            }
+        }
+
+        function showAuth() {
+            dashboardContainer.classList.add('hidden');
+            authContainer.classList.remove('hidden');
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+        }
+
+        function showNotify(msg, colorClass) {
+            notification.className = `fixed top-5 right-5 p-4 rounded shadow-lg text-white ${colorClass}`;
+            notification.innerText = msg;
+            notification.classList.remove('hidden');
+            setTimeout(() => notification.classList.add('hidden'), 3000);
+        }
+    </script>
+</body>
+</html>
