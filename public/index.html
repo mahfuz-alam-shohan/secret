@@ -5,303 +5,480 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secret Messenger</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* No fancy animations, just visibility toggles */
+        body { font-family: 'Inter', sans-serif; }
         .hidden { display: none !important; }
+        /* Smooth transitions for mobile menu */
+        .transition-transform { transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 min-h-screen font-sans">
+<body class="bg-gray-50 text-gray-900 min-h-screen">
 
-    <!-- ERROR BANNER (For Global Errors) -->
-    <div id="error-banner" class="hidden fixed top-0 left-0 w-full bg-red-600 text-white p-4 text-center font-bold z-50">
-        <span id="error-text">Unknown Error</span>
-        <button onclick="location.reload()" class="ml-4 underline">Reload</button>
-    </div>
-
-    <!-- INITIAL LOADING SCREEN -->
-    <div id="init-screen" class="fixed inset-0 bg-white flex flex-col items-center justify-center z-40">
-        <div id="spinner" class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <h2 class="text-xl font-bold text-gray-700">Connecting to System...</h2>
-        <p class="text-gray-500 text-sm mt-2">If this takes longer than 5s, something is wrong.</p>
-    </div>
-
-    <!-- === SECRET VIEWER === -->
-    <div id="viewer-app" class="hidden min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
-        <div class="max-w-md w-full text-center">
-            <h1 class="text-3xl font-bold mb-8 text-indigo-400">Secure Message</h1>
-            
-            <div id="viewer-content" class="hidden bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-xl break-words">
-                <p id="secret-text" class="text-xl font-mono select-all">--</p>
-            </div>
-
-            <div id="viewer-error" class="hidden bg-red-900/50 p-6 rounded-lg border border-red-500 text-red-200">
-                <h2 class="text-xl font-bold mb-2">Message Unavailable</h2>
-                <p>This message has expired or reached its view limit.</p>
-            </div>
-
-            <a href="/" class="inline-block mt-8 text-gray-500 hover:text-white underline">Create your own secret</a>
+    <!-- === GLOBAL ERROR TOAST === -->
+    <div id="toast" class="fixed top-5 right-5 hidden z-50 transform transition-all duration-300 translate-y-[-100%] opacity-0">
+        <div id="toast-content" class="bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl font-medium flex items-center gap-3">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span id="toast-msg">Error Message</span>
         </div>
     </div>
 
-    <!-- === ADMIN / DASHBOARD === -->
-    <div id="admin-app" class="hidden max-w-lg mx-auto p-4 mt-8">
+    <!-- === INITIAL LOADING SPINNER === -->
+    <div id="init-loader" class="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+        <p class="text-gray-500 font-medium">Connecting securely...</p>
+    </div>
+
+    <!-- === AUTHENTICATION SCREENS (Login / Setup) === -->
+    <div id="auth-app" class="hidden min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            <div class="text-center mb-8">
+                <div class="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h1 id="auth-title" class="text-2xl font-bold text-gray-900">Admin Access</h1>
+                <p id="auth-subtitle" class="text-gray-500 mt-2">Sign in to manage your secrets.</p>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form id="login-form" class="space-y-5 hidden">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="login-user" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Enter username" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="login-pass" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition transform active:scale-95">Sign In</button>
+            </form>
+
+            <!-- SETUP FORM -->
+            <form id="setup-form" class="space-y-5 hidden">
+                <div class="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm mb-4">
+                    <strong>First Time Setup:</strong> Create your master admin credentials.
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Master Username</label>
+                    <input type="text" id="setup-user" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Master Password</label>
+                    <input type="password" id="setup-pass" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition transform active:scale-95">Create System</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- === DASHBOARD LAYOUT === -->
+    <div id="dashboard-app" class="hidden min-h-screen flex">
         
-        <!-- HEADER -->
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-2xl font-bold text-indigo-700">Secret Messenger</h1>
-            <button id="logout-btn" class="hidden px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Logout</button>
-        </div>
+        <!-- SIDEBAR (Desktop) -->
+        <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white min-h-screen fixed left-0 top-0 z-30">
+            <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <span class="font-bold text-lg tracking-wide">SecretMsg</span>
+            </div>
+            
+            <nav class="flex-1 p-4 space-y-2">
+                <button onclick="navTo('overview')" id="nav-overview" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Overview
+                </button>
+                <button onclick="navTo('create')" id="nav-create" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    New Secret
+                </button>
+                <button onclick="navTo('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    System
+                </button>
+            </nav>
+            
+            <div class="p-6 border-t border-slate-800">
+                <button onclick="handleLogout()" class="text-sm text-slate-400 hover:text-white flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Sign Out
+                </button>
+            </div>
+        </aside>
 
-        <!-- 1. SETUP FORM -->
-        <div id="setup-view" class="hidden bg-white p-6 rounded shadow-md">
-            <h2 class="text-xl font-bold mb-4">First Time Setup</h2>
-            <form onsubmit="handleSetup(event)">
-                <input type="text" id="setup-user" placeholder="Master Username" class="w-full p-2 border rounded mb-3" required>
-                <input type="password" id="setup-pass" placeholder="Master Password" class="w-full p-2 border rounded mb-3" required>
-                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-bold">Initialize System</button>
-            </form>
-        </div>
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 md:ml-64 bg-gray-50 min-h-screen relative">
+            
+            <!-- MOBILE TOPBAR -->
+            <header class="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-20">
+                <div class="flex items-center gap-2 font-bold text-gray-800">
+                    <div class="w-8 h-8 bg-indigo-600 rounded text-white flex items-center justify-center">S</div>
+                    SecretMsg
+                </div>
+                <button onclick="toggleMobileMenu()" class="text-gray-600 p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </header>
 
-        <!-- 2. LOGIN FORM -->
-        <div id="login-view" class="hidden bg-white p-6 rounded shadow-md">
-            <h2 class="text-xl font-bold mb-4">Admin Login</h2>
-            <form onsubmit="handleLogin(event)">
-                <input type="text" id="login-user" placeholder="Username" class="w-full p-2 border rounded mb-3" required>
-                <input type="password" id="login-pass" placeholder="Password" class="w-full p-2 border rounded mb-3" required>
-                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded font-bold">Login</button>
-            </form>
-        </div>
-
-        <!-- 3. DASHBOARD -->
-        <div id="dashboard-view" class="hidden space-y-6">
-            <!-- Stats -->
-            <div class="bg-white p-4 rounded shadow flex justify-between">
-                <span>Active Secrets:</span>
-                <span id="stat-count" class="font-bold text-indigo-600">--</span>
+            <!-- MOBILE MENU OVERLAY -->
+            <div id="mobile-menu" class="hidden md:hidden absolute top-16 left-0 w-full bg-white shadow-lg border-b border-gray-100 z-10 flex flex-col p-4 space-y-2">
+                <button onclick="navTo('overview'); toggleMobileMenu()" class="p-3 rounded bg-gray-50 text-left font-medium">Overview</button>
+                <button onclick="navTo('create'); toggleMobileMenu()" class="p-3 rounded bg-gray-50 text-left font-medium">New Secret</button>
+                <button onclick="navTo('settings'); toggleMobileMenu()" class="p-3 rounded bg-gray-50 text-left font-medium">System</button>
+                <button onclick="handleLogout()" class="p-3 text-red-600 text-left font-medium">Sign Out</button>
             </div>
 
-            <!-- Create Secret -->
-            <div class="bg-white p-6 rounded shadow">
-                <h3 class="text-lg font-bold mb-4">Create New Secret</h3>
-                <form onsubmit="handleCreate(event)">
-                    <textarea id="secret-content" rows="3" placeholder="Enter secret message..." class="w-full p-2 border rounded mb-4" required></textarea>
-                    
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase">Max Views</label>
-                            <input type="number" id="secret-views" value="1" min="1" class="w-full p-2 border rounded">
+            <div class="p-6 md:p-10 max-w-5xl mx-auto">
+                
+                <!-- VIEW 1: OVERVIEW -->
+                <div id="view-overview" class="hidden fade-in">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6">Dashboard Overview</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Stats Card -->
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Active Secrets</h3>
+                            <div class="flex items-end gap-3">
+                                <span id="stat-active" class="text-4xl font-bold text-indigo-600">--</span>
+                                <span class="text-gray-500 mb-1 text-sm">currently live</span>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase">Timer (Sec)</label>
-                            <select id="secret-timer" class="w-full p-2 border rounded">
-                                <option value="0">Burn Immediately</option>
-                                <option value="10">10 Seconds</option>
-                                <option value="60">1 Minute</option>
-                                <option value="3600">1 Hour</option>
-                            </select>
+                        <!-- Quick Action -->
+                        <div class="bg-indigo-600 p-6 rounded-xl shadow-lg shadow-indigo-200 text-white flex flex-col justify-between cursor-pointer hover:bg-indigo-700 transition" onclick="navTo('create')">
+                            <div>
+                                <h3 class="font-bold text-lg">Create New</h3>
+                                <p class="text-indigo-100 text-sm mt-1">Generate a secure link instantly.</p>
+                            </div>
+                            <div class="mt-4 self-end bg-white/20 p-2 rounded-full">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <button type="submit" class="w-full bg-green-600 text-white p-3 rounded font-bold hover:bg-green-700">Generate Link</button>
-                </form>
+                <!-- VIEW 2: CREATE SECRET (Sequential Process) -->
+                <div id="view-create" class="hidden fade-in">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6">Create New Secret</h2>
+                    
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        
+                        <!-- Form Section -->
+                        <div id="create-step-1" class="p-6 md:p-8">
+                            <form id="create-form" class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">1. The Message</label>
+                                    <textarea id="secret-content" rows="4" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 outline-none transition text-lg" placeholder="Type your confidential message here..." required></textarea>
+                                </div>
 
-                <!-- Result -->
-                <div id="result-area" class="hidden mt-4 bg-green-50 p-4 border border-green-200 rounded">
-                    <p class="text-sm font-bold text-green-800 mb-1">Secret Link Ready:</p>
-                    <input type="text" id="result-link" readonly class="w-full p-2 border rounded text-sm bg-white" onclick="this.select()">
-                    <p class="text-xs text-green-600 mt-1">Share this link. It will self-destruct.</p>
+                                <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                                    <label class="block text-sm font-bold text-gray-700 mb-4">2. Security Settings</label>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <span class="text-xs font-semibold text-gray-500 uppercase">Max Devices</span>
+                                            <input type="number" id="secret-views" value="1" min="1" class="w-full mt-2 p-3 bg-white border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                                            <p class="text-xs text-gray-400 mt-1">Link breaks after this many opens.</p>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-semibold text-gray-500 uppercase">Self-Destruct Timer</span>
+                                            <select id="secret-timer" class="w-full mt-2 p-3 bg-white border border-gray-200 rounded-lg outline-none focus:border-indigo-500">
+                                                <option value="0">Immediately after reading</option>
+                                                <option value="10">10 Seconds</option>
+                                                <option value="60">1 Minute</option>
+                                                <option value="3600">1 Hour</option>
+                                                <option value="86400">24 Hours</option>
+                                            </select>
+                                            <p class="text-xs text-gray-400 mt-1">Timer starts upon first view.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pt-4">
+                                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-100 transition transform active:scale-[0.98] flex items-center justify-center gap-2">
+                                        <span>Generate Secure Link</span>
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Success Section (Hidden initially) -->
+                        <div id="create-step-2" class="hidden p-8 bg-green-50 text-center">
+                            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-green-900 mb-2">Secret Link Ready</h3>
+                            <p class="text-green-700 mb-6">Share this link securely. It will verify the device and self-destruct according to your settings.</p>
+                            
+                            <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-green-200 shadow-sm mb-6">
+                                <input type="text" id="result-link" readonly class="flex-1 p-2 outline-none text-gray-600 font-mono text-sm" onclick="this.select()">
+                                <button onclick="copyLink()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Copy</button>
+                            </div>
+
+                            <button onclick="resetCreateForm()" class="text-green-700 font-medium underline">Create Another Secret</button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- VIEW 3: SETTINGS -->
+                <div id="view-settings" class="hidden fade-in">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6">System Settings</h2>
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-red-100">
+                        <h3 class="text-lg font-bold text-red-600 mb-2">Danger Zone</h3>
+                        <p class="text-gray-500 mb-6">Resetting the system will wipe all secrets, sessions, and the admin account. You will need to perform the setup process again.</p>
+                        <button onclick="handleReset()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 px-6 rounded-lg transition">
+                            Factory Reset System
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- === SECRET VIEWER APP (Separate Full Screen) === -->
+    <div id="viewer-app" class="hidden min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        
+        <!-- Background Ambient -->
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 z-10"></div>
+        
+        <div class="max-w-2xl w-full z-10 relative">
+            <div class="text-center mb-10">
+                <div class="inline-block p-3 bg-gray-800 rounded-2xl mb-4 border border-gray-700 shadow-2xl">
+                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h1 class="text-3xl font-bold tracking-tight">Secure Message</h1>
+            </div>
+
+            <div id="viewer-content" class="hidden bg-gray-800/50 backdrop-blur-xl border border-gray-700 p-8 rounded-2xl shadow-2xl">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Decrypted Content</p>
+                <div class="prose prose-invert max-w-none">
+                    <p id="secret-text" class="text-xl md:text-2xl leading-relaxed font-mono break-words select-all">--</p>
+                </div>
+                <div id="viewer-timer-msg" class="mt-8 pt-4 border-t border-gray-700 text-right text-xs text-orange-400 font-mono hidden">
+                    Self-destruct timer active
                 </div>
             </div>
 
-            <!-- Reset -->
-            <div class="text-center">
-                <button onclick="handleReset()" class="text-red-500 text-sm underline">Factory Reset System</button>
+            <div id="viewer-error" class="hidden text-center py-12">
+                <div class="text-6xl mb-6">💥</div>
+                <h2 class="text-2xl font-bold text-red-400 mb-2">Message Destroyed</h2>
+                <p class="text-gray-400">This link is invalid, expired, or was already viewed.</p>
+                <a href="/" class="inline-block mt-8 text-indigo-400 hover:text-white underline transition">Create your own secret</a>
             </div>
         </div>
     </div>
 
+    <!-- === JAVASCRIPT === -->
     <script>
-        // CONFIG
         const API_URL = '/api';
         const urlParams = new URLSearchParams(window.location.search);
         const secretId = urlParams.get('id');
-
-        // STATE
         let token = localStorage.getItem('admin_token');
 
-        // --- CORE FUNCTIONS ---
+        // --- INIT ---
+        window.onload = () => {
+            if (secretId) {
+                // Viewer Mode
+                document.getElementById('init-loader').classList.add('hidden');
+                document.getElementById('viewer-app').classList.remove('hidden');
+                loadSecret(secretId);
+            } else {
+                // Admin Mode
+                if (token) {
+                    initDashboard();
+                } else {
+                    checkSetup();
+                }
+            }
+        };
 
-        // Robust Fetch Wrapper with Timeout
+        // --- API HELPER ---
         async function apiCall(endpoint, method = 'GET', body = null) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second hard timeout
+            setTimeout(() => controller.abort(), 8000); // 8s timeout
 
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            const config = { method, headers, signal: controller.signal };
-            if (body) config.body = JSON.stringify(body);
-
+            
             try {
-                const res = await fetch(`${API_URL}${endpoint}`, config);
-                clearTimeout(timeoutId);
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    method, headers, body: body ? JSON.stringify(body) : null, signal: controller.signal
+                });
                 
+                // Try parsing JSON, fallback to text if fails (usually robust backend handles this)
                 const text = await res.text();
-                try {
-                    const data = JSON.parse(text);
-                    if (!res.ok) throw new Error(data.error || `Server Error ${res.status}`);
-                    return data;
-                } catch(e) {
-                    throw new Error(text || `Server Error ${res.status}`);
-                }
+                let data;
+                try { data = JSON.parse(text); } catch(e) { data = {}; }
+
+                if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+                return data;
             } catch (err) {
-                if (err.name === 'AbortError') throw new Error("Server Timeout (8s)");
+                if (err.name === 'AbortError') throw new Error("Connection Timeout");
                 throw err;
             }
         }
 
-        function showError(msg) {
-            document.getElementById('init-screen').classList.add('hidden');
-            const banner = document.getElementById('error-banner');
-            document.getElementById('error-text').innerText = msg;
-            banner.classList.remove('hidden');
+        function showToast(msg, type = 'error') {
+            const toast = document.getElementById('toast');
+            const content = document.getElementById('toast-content');
+            document.getElementById('toast-msg').innerText = msg;
+            
+            // Animation styles
+            content.className = type === 'success' 
+                ? 'bg-emerald-600 text-white px-6 py-4 rounded-lg shadow-xl font-medium flex items-center gap-3'
+                : 'bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl font-medium flex items-center gap-3';
+            
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-[-100%]', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-100%]', 'opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
         }
 
-        // --- INIT LOGIC ---
-
-        async function init() {
-            try {
-                if (secretId) {
-                    // VIEWER MODE
-                    document.getElementById('init-screen').classList.add('hidden');
-                    document.getElementById('viewer-app').classList.remove('hidden');
-                    await loadSecret(secretId);
-                } else {
-                    // ADMIN MODE
-                    document.getElementById('admin-app').classList.remove('hidden');
-                    if (token) {
-                        await loadDashboard();
-                    } else {
-                        await checkSystem();
-                    }
-                }
-            } catch (err) {
-                showError("Init Failed: " + err.message);
-            }
-        }
-
-        // --- VIEWER ---
-
-        async function loadSecret(id) {
-            try {
-                const data = await apiCall(`/secret/${id}`);
-                document.getElementById('viewer-content').classList.remove('hidden');
-                document.getElementById('secret-text').innerText = data.content;
-            } catch (err) {
-                document.getElementById('viewer-error').classList.remove('hidden');
-                // Don't show global error for 404/410, just local error
-            }
-        }
-
-        // --- ADMIN FLOWS ---
-
-        async function checkSystem() {
+        // --- AUTH FLOWS ---
+        async function checkSetup() {
             try {
                 const data = await apiCall('/check-setup');
-                document.getElementById('init-screen').classList.add('hidden');
-                if (data.setupRequired) {
-                    document.getElementById('setup-view').classList.remove('hidden');
-                } else {
-                    document.getElementById('login-view').classList.remove('hidden');
-                }
-            } catch (err) {
-                showError(err.message);
-            }
-        }
-
-        async function loadDashboard() {
-            try {
-                const data = await apiCall('/dashboard');
-                document.getElementById('init-screen').classList.add('hidden');
-                document.getElementById('login-view').classList.add('hidden');
-                document.getElementById('dashboard-view').classList.remove('hidden');
-                document.getElementById('logout-btn').classList.remove('hidden');
+                document.getElementById('init-loader').classList.add('hidden');
+                document.getElementById('auth-app').classList.remove('hidden');
                 
-                document.getElementById('stat-count').innerText = data.stats.active_secrets;
-            } catch (err) {
-                if (err.message.includes("401") || err.message.includes("Session") || err.message.includes("Token")) {
-                    localStorage.removeItem('admin_token');
-                    location.reload();
+                if (data.setupRequired) {
+                    document.getElementById('setup-form').classList.remove('hidden');
+                    document.getElementById('auth-title').innerText = "System Setup";
+                    document.getElementById('auth-subtitle').innerText = "Initialize your secure environment.";
                 } else {
-                    showError(err.message);
+                    document.getElementById('login-form').classList.remove('hidden');
                 }
+            } catch (err) {
+                showToast(err.message);
             }
         }
 
-        // --- HANDLERS ---
-
-        async function handleSetup(e) {
-            e.preventDefault();
-            const u = document.getElementById('setup-user').value;
-            const p = document.getElementById('setup-pass').value;
-            try {
-                await apiCall('/setup', 'POST', { username: u, password: p });
-                alert("Setup Complete. Please Login.");
-                location.reload();
-            } catch(err) { alert(err.message); }
-        }
-
-        async function handleLogin(e) {
+        document.getElementById('login-form').onsubmit = async (e) => {
             e.preventDefault();
             const u = document.getElementById('login-user').value;
             const p = document.getElementById('login-pass').value;
             try {
                 const data = await apiCall('/login', 'POST', { username: u, password: p });
-                localStorage.setItem('admin_token', data.token);
                 token = data.token;
-                loadDashboard();
-            } catch(err) { alert(err.message); }
+                localStorage.setItem('admin_token', token);
+                document.getElementById('auth-app').classList.add('hidden');
+                initDashboard();
+            } catch(e) { showToast(e.message); }
+        };
+
+        document.getElementById('setup-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('setup-user').value;
+            const p = document.getElementById('setup-pass').value;
+            try {
+                await apiCall('/setup', 'POST', { username: u, password: p });
+                showToast("System Initialized", 'success');
+                setTimeout(() => location.reload(), 1000);
+            } catch(e) { showToast(e.message); }
+        };
+
+        // --- DASHBOARD FLOWS ---
+        async function initDashboard() {
+            document.getElementById('init-loader').classList.add('hidden');
+            document.getElementById('dashboard-app').classList.remove('hidden');
+            navTo('overview');
+            updateStats();
         }
 
-        async function handleCreate(e) {
+        function navTo(viewName) {
+            // Hide all views
+            ['overview', 'create', 'settings'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                // Reset Nav styles (desktop)
+                const navBtn = document.getElementById(`nav-${v}`);
+                if(navBtn) navBtn.className = "w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition";
+            });
+
+            // Show target
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            
+            // Active Nav style
+            const activeBtn = document.getElementById(`nav-${viewName}`);
+            if(activeBtn) activeBtn.className = "w-full flex items-center gap-3 px-4 py-3 bg-indigo-600 text-white rounded-lg shadow-lg shadow-indigo-900/20 transition";
+
+            if (viewName === 'overview') updateStats();
+        }
+
+        async function updateStats() {
+            try {
+                const data = await apiCall('/dashboard');
+                document.getElementById('stat-active').innerText = data.stats.active_secrets;
+            } catch(err) {
+                if(err.message.includes('401') || err.message.includes('Session')) handleLogout();
+            }
+        }
+
+        // --- CREATE FLOW ---
+        document.getElementById('create-form').onsubmit = async (e) => {
             e.preventDefault();
             const content = document.getElementById('secret-content').value;
             const views = document.getElementById('secret-views').value;
             const timer = document.getElementById('secret-timer').value;
+            
             try {
-                const data = await apiCall('/secret', 'POST', { 
-                    content, 
-                    max_views: parseInt(views), 
-                    expiry_seconds: parseInt(timer) 
-                });
+                const data = await apiCall('/secret', 'POST', { content, max_views: parseInt(views), expiry_seconds: parseInt(timer) });
+                
+                // Show Success State
+                document.getElementById('create-step-1').classList.add('hidden');
+                document.getElementById('create-step-2').classList.remove('hidden');
                 
                 const link = `${window.location.origin}?id=${data.id}`;
                 document.getElementById('result-link').value = link;
-                document.getElementById('result-area').classList.remove('hidden');
                 
-                // Refresh Stats
-                const stats = await apiCall('/dashboard');
-                document.getElementById('stat-count').innerText = stats.stats.active_secrets;
-            } catch(err) { alert(err.message); }
+            } catch(e) { showToast(e.message); }
+        };
+
+        function resetCreateForm() {
+            document.getElementById('create-form').reset();
+            document.getElementById('create-step-2').classList.add('hidden');
+            document.getElementById('create-step-1').classList.remove('hidden');
+        }
+
+        function copyLink() {
+            const el = document.getElementById('result-link');
+            el.select();
+            navigator.clipboard.writeText(el.value);
+            showToast("Link Copied!", 'success');
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('admin_token');
+            location.reload();
         }
 
         async function handleReset() {
-            if(!confirm("DELETE ALL DATA?")) return;
+            if(!confirm("Are you absolutely sure? This cannot be undone.")) return;
             try {
                 await apiCall('/reset', 'DELETE');
-                localStorage.removeItem('admin_token');
-                alert("System Reset");
-                location.reload();
-            } catch(err) { alert(err.message); }
+                handleLogout();
+            } catch(e) { showToast(e.message); }
         }
 
-        document.getElementById('logout-btn').onclick = () => {
-            localStorage.removeItem('admin_token');
-            location.reload();
-        };
-
-        // START
-        init();
+        // --- VIEWER FLOW ---
+        async function loadSecret(id) {
+            try {
+                const data = await apiCall(`/secret/${id}`);
+                document.getElementById('viewer-content').classList.remove('hidden');
+                document.getElementById('secret-text').innerText = data.content;
+                if (data.settings.expiry > 0) document.getElementById('viewer-timer-msg').classList.remove('hidden');
+            } catch(e) {
+                document.getElementById('viewer-error').classList.remove('hidden');
+            }
+        }
 
     </script>
 </body>
