@@ -48,7 +48,8 @@
     <!-- === LOADER === -->
     <div id="init-loader" class="fixed inset-0 bg-white z-[90] flex flex-col items-center justify-center">
         <div class="w-12 h-12 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 text-slate-500 font-mono tracking-widest text-xs">ESTABLISHING SECURE CONNECTION</p>
+        <p id="loader-text" class="mt-4 text-slate-500 font-mono tracking-widest text-xs">ESTABLISHING SECURE CONNECTION</p>
+        <button onclick="location.reload()" id="retry-btn" class="hidden mt-4 text-indigo-600 text-sm font-bold underline">Retry Connection</button>
     </div>
 
     <!-- === VIEWER APP (THE MAGIC HAPPENS HERE) === -->
@@ -386,24 +387,46 @@
         let token = localStorage.getItem('admin_token');
         let currentPreset = 'text';
 
-        // --- AUTH ---
+        // --- AUTH & INIT ---
         window.onload = async () => {
-            if (secretId) {
-                // VIEWER MODE
-                document.getElementById('init-loader').classList.add('hidden');
-                document.getElementById('viewer-app').classList.remove('hidden');
-                loadSecret(secretId);
-            } else {
-                // ADMIN MODE
-                if (token) {
-                    initDashboard();
-                } else {
-                    const data = await apiCall('/check-setup');
-                    document.getElementById('init-loader').classList.add('hidden');
-                    document.getElementById('auth-app').classList.remove('hidden');
-                    document.getElementById('auth-form').onsubmit = (e) => handleAuth(e, data.setupRequired);
-                    if(data.setupRequired) document.getElementById('setup-msg').classList.remove('hidden');
+            // Safety timeout: If nothing loads in 8s, show retry
+            const safetyTimer = setTimeout(() => {
+                const loader = document.getElementById('init-loader');
+                if(!loader.classList.contains('hidden')) {
+                   document.getElementById('loader-text').innerText = "CONNECTION TIMED OUT";
+                   document.getElementById('retry-btn').classList.remove('hidden');
                 }
+            }, 8000);
+
+            try {
+                if (secretId) {
+                    // VIEWER MODE
+                    await loadSecret(secretId); // wait for it
+                    document.getElementById('init-loader').classList.add('hidden');
+                    document.getElementById('viewer-app').classList.remove('hidden');
+                } else {
+                    // ADMIN MODE
+                    if (token) {
+                        await initDashboard();
+                        document.getElementById('init-loader').classList.add('hidden');
+                        document.getElementById('dashboard-app').classList.remove('hidden');
+                    } else {
+                        const data = await apiCall('/check-setup');
+                        document.getElementById('init-loader').classList.add('hidden');
+                        document.getElementById('auth-app').classList.remove('hidden');
+                        
+                        document.getElementById('auth-form').onsubmit = (e) => handleAuth(e, data.setupRequired);
+                        if(data.setupRequired) document.getElementById('setup-msg').classList.remove('hidden');
+                    }
+                }
+            } catch (e) {
+                console.error("Init Error:", e);
+                document.getElementById('loader-text').innerText = "SERVER CONNECTION FAILED";
+                document.getElementById('loader-text').classList.add('text-red-500');
+                document.getElementById('retry-btn').classList.remove('hidden');
+                toast("System Error: " + e.message);
+            } finally {
+                clearTimeout(safetyTimer);
             }
         };
 
@@ -416,18 +439,27 @@
                 const res = await apiCall(endpoint, 'POST', { username: u, password: p });
                 if(res.token) localStorage.setItem('admin_token', res.token);
                 if(isSetup) location.reload();
-                else { token = res.token; initDashboard(); }
+                else { 
+                    token = res.token; 
+                    await initDashboard();
+                    document.getElementById('auth-app').classList.add('hidden');
+                    document.getElementById('dashboard-app').classList.remove('hidden');
+                }
             } catch(e) { toast(e.message); }
         }
 
-        function initDashboard() {
-            document.getElementById('auth-app').classList.add('hidden');
-            document.getElementById('dashboard-app').classList.remove('hidden');
-            router.navigate('overview');
-            updateStats();
+        async function initDashboard() {
+            try {
+                await updateStats();
+                router.navigate('overview');
+            } catch(e) {
+                // If token invalid
+                if(e.message.includes('401') || e.message.includes('Session')) handleLogout();
+                else throw e;
+            }
         }
 
-        // --- DASHBOARD ---
+        // --- DASHBOARD ROUTER ---
         const router = {
             navigate: (view) => {
                 document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg'));
@@ -447,12 +479,10 @@
         };
 
         async function updateStats() {
-            try {
-                const data = await apiCall('/dashboard');
-                document.getElementById('stat-active').innerText = data.stats.active_secrets;
-                document.getElementById('stat-burned').innerText = data.stats.burned_secrets;
-                document.getElementById('stat-views').innerText = data.stats.total_views;
-            } catch(e) {}
+            const data = await apiCall('/dashboard');
+            document.getElementById('stat-active').innerText = data.stats.active_secrets;
+            document.getElementById('stat-burned').innerText = data.stats.burned_secrets;
+            document.getElementById('stat-views').innerText = data.stats.total_views;
         }
 
         function setPreset(preset) {
@@ -469,7 +499,7 @@
                 mediaFields.classList.add('hidden');
                 help.innerText = "Simple text message.";
             } else if (preset === 'threat') {
-                mediaFields.classList.add('hidden'); // Simplified for now
+                mediaFields.classList.add('hidden'); 
                 help.innerText = "This text will appear in a red glitch terminal.";
             } else if (preset === 'proposal') {
                 mediaFields.classList.remove('hidden');
@@ -504,104 +534,98 @@
 
         // --- VIEWER ---
         async function loadSecret(id) {
-            try {
-                // Initial tracking happens server side on fetch
-                const data = await apiCall(`/secret/${id}`);
-                const meta = data.metadata || {};
+            // No try-catch here, let the main loader handle the error
+            const data = await apiCall(`/secret/${id}`);
+            const meta = data.metadata || {};
 
-                // 1. Handle Background
-                const bgLayer = document.getElementById('viewer-bg-layer');
-                if (meta.backgroundUrl) {
-                    if (meta.backgroundUrl.match(/\.(mp4|webm)$/i)) {
-                        const vid = document.getElementById('viewer-bg-video');
-                        vid.src = meta.backgroundUrl;
-                        vid.classList.remove('hidden');
-                        vid.play();
-                    } else {
-                        const img = document.getElementById('viewer-bg-img');
-                        img.src = meta.backgroundUrl;
-                        img.classList.remove('hidden');
-                    }
-                }
-
-                // 2. Handle Music
-                if (meta.musicUrl) {
-                    const audio = document.getElementById('bg-audio');
-                    audio.src = meta.musicUrl;
-                    // Auto play policy usually requires interaction, but we try
-                    audio.play().catch(() => {
-                        const btn = document.createElement('button');
-                        btn.innerText = "🔊 Enable Sound";
-                        btn.className = "fixed bottom-10 z-[100] bg-white text-black px-4 py-2 rounded-full shadow-lg font-bold";
-                        btn.onclick = () => { audio.play(); btn.remove(); };
-                        document.body.appendChild(btn);
-                    });
-                }
-
-                // 3. Handle Types
-                if (data.type === 'threat') {
-                    bgLayer.className = "absolute inset-0 bg-black z-0";
-                    document.getElementById('ui-threat').classList.remove('hidden');
-                    
-                    // Typing effect
-                    const el = document.getElementById('threat-text');
-                    const text = data.content;
-                    let i = 0;
-                    function type() {
-                        if(i < text.length) {
-                            el.innerHTML += text.charAt(i);
-                            i++;
-                            setTimeout(type, 50);
-                        }
-                    }
-                    type();
-
-                    // IP Display
-                    fetch('https://api.ipify.org?format=json')
-                        .then(r=>r.json())
-                        .then(d => document.getElementById('viewer-ip').innerText = d.ip)
-                        .catch(()=> document.getElementById('viewer-ip').innerText = "UNKNOWN");
-
-                } else if (data.type === 'proposal') {
-                    bgLayer.className = "absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-800 z-0";
-                    document.getElementById('ui-proposal').classList.remove('hidden');
-                    
-                    const lines = data.content.split('\n').filter(l => l.trim());
-                    const lineEl = document.getElementById('proposal-line');
-                    const btn = document.getElementById('proposal-start-btn');
-                    
-                    btn.classList.remove('hidden');
-                    btn.onclick = () => {
-                        btn.classList.add('hidden');
-                        let idx = 0;
-                        function showLine() {
-                            if(idx < lines.length) {
-                                lineEl.style.opacity = 0;
-                                setTimeout(() => {
-                                    lineEl.innerText = lines[idx];
-                                    lineEl.style.opacity = 1;
-                                    idx++;
-                                    setTimeout(showLine, 4000); // 4 seconds per line
-                                }, 500);
-                            } else {
-                                // End state
-                                lineEl.innerHTML = `<span class="text-6xl">❤️</span>`;
-                            }
-                        }
-                        showLine();
-                        document.getElementById('bg-audio').play();
-                    };
-
+            // 1. Handle Background
+            const bgLayer = document.getElementById('viewer-bg-layer');
+            if (meta.backgroundUrl) {
+                if (meta.backgroundUrl.match(/\.(mp4|webm)$/i)) {
+                    const vid = document.getElementById('viewer-bg-video');
+                    vid.src = meta.backgroundUrl;
+                    vid.classList.remove('hidden');
+                    vid.play().catch(e => console.log("Autoplay blocked", e));
                 } else {
-                    // Standard
-                    document.getElementById('ui-standard').classList.remove('hidden');
-                    document.getElementById('standard-text').innerText = data.content;
-                    document.getElementById('doc-id').innerText = id.substring(0,8).toUpperCase();
+                    const img = document.getElementById('viewer-bg-img');
+                    img.src = meta.backgroundUrl;
+                    img.classList.remove('hidden');
                 }
+            }
 
-            } catch(e) {
-                document.getElementById('viewer-error').classList.remove('hidden');
-                document.getElementById('error-msg').innerText = e.message;
+            // 2. Handle Music
+            if (meta.musicUrl) {
+                const audio = document.getElementById('bg-audio');
+                audio.src = meta.musicUrl;
+                // Auto play policy handling
+                audio.play().catch(() => {
+                    const btn = document.createElement('button');
+                    btn.innerText = "🔊 Enable Sound";
+                    btn.className = "fixed bottom-10 z-[100] bg-white text-black px-4 py-2 rounded-full shadow-lg font-bold animate-bounce";
+                    btn.onclick = () => { audio.play(); btn.remove(); };
+                    document.body.appendChild(btn);
+                });
+            }
+
+            // 3. Handle Types
+            if (data.type === 'threat') {
+                bgLayer.className = "absolute inset-0 bg-black z-0";
+                document.getElementById('ui-threat').classList.remove('hidden');
+                
+                // Typing effect
+                const el = document.getElementById('threat-text');
+                const text = data.content;
+                let i = 0;
+                function type() {
+                    if(i < text.length) {
+                        el.innerHTML += text.charAt(i);
+                        i++;
+                        setTimeout(type, 50);
+                    }
+                }
+                type();
+
+                // IP Display
+                fetch('https://api.ipify.org?format=json')
+                    .then(r=>r.json())
+                    .then(d => document.getElementById('viewer-ip').innerText = d.ip)
+                    .catch(()=> document.getElementById('viewer-ip').innerText = "UNKNOWN");
+
+            } else if (data.type === 'proposal') {
+                bgLayer.className = "absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-800 z-0";
+                document.getElementById('ui-proposal').classList.remove('hidden');
+                
+                const lines = data.content.split('\n').filter(l => l.trim());
+                const lineEl = document.getElementById('proposal-line');
+                const btn = document.getElementById('proposal-start-btn');
+                
+                btn.classList.remove('hidden');
+                btn.onclick = () => {
+                    btn.classList.add('hidden');
+                    let idx = 0;
+                    function showLine() {
+                        if(idx < lines.length) {
+                            lineEl.style.opacity = 0;
+                            setTimeout(() => {
+                                lineEl.innerText = lines[idx];
+                                lineEl.style.opacity = 1;
+                                idx++;
+                                setTimeout(showLine, 4000); // 4 seconds per line
+                            }, 500);
+                        } else {
+                            // End state
+                            lineEl.innerHTML = `<span class="text-6xl">❤️</span>`;
+                        }
+                    }
+                    showLine();
+                    document.getElementById('bg-audio').play();
+                };
+
+            } else {
+                // Standard
+                document.getElementById('ui-standard').classList.remove('hidden');
+                document.getElementById('standard-text').innerText = data.content;
+                document.getElementById('doc-id').innerText = id.substring(0,8).toUpperCase();
             }
         }
 
@@ -612,6 +636,10 @@
             try {
                 const data = await apiCall('/secrets-list');
                 tbody.innerHTML = '';
+                if(data.secrets.length === 0) {
+                     tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">No active signals detected.</td></tr>';
+                     return;
+                }
                 data.secrets.forEach(s => {
                     const date = new Date(s.created_at * 1000).toLocaleDateString();
                     const status = s.is_active ? '<span class="text-emerald-500 font-bold">ACTIVE</span>' : '<span class="text-slate-400">BURNED</span>';
@@ -650,8 +678,8 @@
                     entries.innerHTML += `
                         <div class="border-b border-slate-700 pb-2 mb-2">
                             <div class="flex justify-between text-emerald-400 font-bold">
-                                <span>${l.ip_address}</span>
-                                <span>${l.country}</span>
+                                <span>${l.ip_address || 'Unknown IP'}</span>
+                                <span>${l.country || 'Unknown Loc'}</span>
                             </div>
                             <div class="flex justify-between text-slate-500">
                                 <span>${l.device_type} • ${l.city}</span>
@@ -671,12 +699,31 @@
 
         // --- UTILS ---
         async function apiCall(endpoint, method = 'GET', body = null) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-            const res = await fetch(`${API_URL}${endpoint}`, { method, headers, body: body ? JSON.stringify(body) : null });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Error");
-            return data;
+
+            try {
+                const res = await fetch(`${API_URL}${endpoint}`, { 
+                    method, 
+                    headers, 
+                    body: body ? JSON.stringify(body) : null,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                const text = await res.text();
+                let data;
+                try { data = JSON.parse(text); } catch(e) { data = {}; }
+
+                if (!res.ok) throw new Error(data.error || `Server Error ${res.status}`);
+                return data;
+            } catch (err) {
+                if (err.name === 'AbortError') throw new Error("Connection timed out");
+                throw err;
+            }
         }
 
         function toast(msg) {
