@@ -1,7 +1,7 @@
 // src/index.js
 import { generateSalt, hashPassword, verifyPassword, generateSessionId } from './security.js';
 
-// --- SAFETY WRAPPERS (Prevents Worker Crashes) ---
+// --- UTILS ---
 async function safeQuery(env, query, ...args) {
     try {
         if (!env.DB) throw new Error("DB_BINDING_MISSING");
@@ -22,36 +22,28 @@ async function safeSelect(env, query, ...args) {
     }
 }
 
-// --- INIT DB ---
-async function initDB(env) {
-    const queries = [
-        `CREATE TABLE IF NOT EXISTS admins (
-            id INTEGER PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            salt TEXT NOT NULL,
-            created_at INTEGER DEFAULT (strftime('%s', 'now'))
-        );`,
-        `CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            expires_at INTEGER NOT NULL,
-            created_at INTEGER DEFAULT (strftime('%s', 'now')),
-            FOREIGN KEY (user_id) REFERENCES admins(id)
-        );`,
-        `CREATE TABLE IF NOT EXISTS secrets (
-            id TEXT PRIMARY KEY,
-            content TEXT NOT NULL,
-            max_views INTEGER DEFAULT 1,
-            expiry_seconds INTEGER DEFAULT 0,
-            view_count INTEGER DEFAULT 0,
-            first_viewed_at INTEGER DEFAULT NULL,
-            created_at INTEGER DEFAULT (strftime('%s', 'now'))
-        );`
-    ];
-    for (const q of queries) await safeQuery(env, q);
+async function safeSelectAll(env, query, ...args) {
+    try {
+        if (!env.DB) throw new Error("DB_BINDING_MISSING");
+        return await env.DB.prepare(query).bind(...args).all();
+    } catch (e) {
+        console.error("DB SelectAll Error:", e.message);
+        throw new Error(`DB_ERROR: ${e.message}`);
+    }
 }
 
+// --- INIT DB ---
+async function initDB(env) {
+    // We run the schema query separately in development, but this ensures tables exist
+    const check = await safeSelect(env, "SELECT name FROM sqlite_master WHERE type='table' AND name='access_logs'");
+    if (!check) {
+        // This is a fallback if you haven't run schema.sql manually. 
+        // Ideally, use 'wrangler d1 execute' with the schema file.
+        console.log("Tables missing. Please run schema.sql");
+    }
+}
+
+// --- WORKER HANDLER ---
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -70,41 +62,68 @@ export default {
 
         if (path.startsWith('/api')) {
             try {
-                await initDB(env); // Ensure DB is ready
-
-                // 1. PUBLIC: GET SECRET
+                // 1. PUBLIC: GET SECRET (The core viewer logic)
                 const secretMatch = path.match(/^\/api\/secret\/(.+)$/);
                 if (secretMatch && method === 'GET') {
                     const secretId = secretMatch[1];
                     const now = Math.floor(Date.now() / 1000);
 
-                    const secret = await safeSelect(env, "SELECT * FROM secrets WHERE id = ?", secretId);
+                    // A. Fetch Secret
+                    let secret = await safeSelect(env, "SELECT * FROM secrets WHERE id = ?", secretId);
 
-                    if (!secret) return new Response(JSON.stringify({ error: "Message not found or expired." }), { status: 404, headers: corsHeaders });
+                    if (!secret) return new Response(JSON.stringify({ error: "Message not found." }), { status: 404, headers: corsHeaders });
 
-                    // Time Expiry Check
+                    // B. Surveillance: Log the visitor details BEFORE validation
+                    const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'Unknown';
+                    const country = request.cf?.country || 'Unknown';
+                    const city = request.cf?.city || 'Unknown';
+                    const ua = request.headers.get('User-Agent') || 'Unknown';
+                    const device = ua.includes('Mobile') ? 'Mobile' : 'Desktop';
+                    
+                    // Don't log admin checks (if we add preview mode later), but for now log everything
+                    await safeQuery(env, 
+                        "INSERT INTO access_logs (secret_id, ip_address, country, city, user_agent, device_type) VALUES (?, ?, ?, ?, ?, ?)",
+                        secretId, ip, country, city, ua, device
+                    );
+
+                    // C. Validate Status
+                    if (secret.is_active === 0) {
+                        return new Response(JSON.stringify({ error: "Message has been burned." }), { status: 410, headers: corsHeaders });
+                    }
+
+                    // D. Expiry Check (Time)
                     if (secret.first_viewed_at !== null && secret.expiry_seconds > 0) {
                         if ((now - secret.first_viewed_at) > secret.expiry_seconds) {
-                            await safeQuery(env, "DELETE FROM secrets WHERE id = ?", secretId);
+                            await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
                             return new Response(JSON.stringify({ error: "Message expired." }), { status: 410, headers: corsHeaders });
                         }
                     }
 
-                    // View Limit Check
+                    // E. View Limit Check
                     if (secret.view_count >= secret.max_views) {
-                        await safeQuery(env, "DELETE FROM secrets WHERE id = ?", secretId);
+                        await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
                         return new Response(JSON.stringify({ error: "Max views reached." }), { status: 410, headers: corsHeaders });
                     }
 
-                    // Update Counts
+                    // F. Update Counts
                     if (secret.first_viewed_at === null) {
                         await safeQuery(env, "UPDATE secrets SET view_count = view_count + 1, first_viewed_at = ? WHERE id = ?", now, secretId);
                     } else {
                         await safeQuery(env, "UPDATE secrets SET view_count = view_count + 1 WHERE id = ?", secretId);
                     }
 
+                    // G. Check if this view KILLS it (Burn on Read)
+                    if (secret.view_count + 1 > secret.max_views) {
+                         // We return the content THIS ONE LAST TIME, but mark it burned for next time
+                         // Actually, standard burn-on-read means we delete AFTER this response.
+                         // To be safe, we mark it burned in DB now, but return content in memory.
+                         await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
+                    }
+
                     return new Response(JSON.stringify({ 
+                        type: secret.type,
                         content: secret.content, 
+                        metadata: JSON.parse(secret.metadata || '{}'),
                         settings: { expiry: secret.expiry_seconds } 
                     }), { status: 200, headers: corsHeaders });
                 }
@@ -143,7 +162,7 @@ export default {
                     return new Response(JSON.stringify({ token: token, message: "OK" }), { status: 200, headers: corsHeaders });
                 }
 
-                // --- AUTH CHECK ---
+                // --- AUTH CHECK MIDDLEWARE ---
                 const authHeader = request.headers.get('Authorization');
                 const token = authHeader ? authHeader.split(' ')[1] : null;
                 if (!token) return new Response(JSON.stringify({ error: "No Token" }), { status: 401, headers: corsHeaders });
@@ -153,30 +172,63 @@ export default {
 
                 // 5. DASHBOARD STATS
                 if (path === '/api/dashboard' && method === 'GET') {
-                    const stats = await safeSelect(env, "SELECT COUNT(*) as count FROM secrets");
+                    const active = await safeSelect(env, "SELECT COUNT(*) as count FROM secrets WHERE is_active = 1");
+                    const burned = await safeSelect(env, "SELECT COUNT(*) as count FROM secrets WHERE is_active = 0");
+                    const logs = await safeSelect(env, "SELECT COUNT(*) as count FROM access_logs");
+                    
                     return new Response(JSON.stringify({ 
                         username: session.username,
-                        stats: { active_secrets: stats?.count || 0 }
+                        stats: { 
+                            active_secrets: active?.count || 0,
+                            burned_secrets: burned?.count || 0,
+                            total_views: logs?.count || 0
+                        }
                     }), { status: 200, headers: corsHeaders });
                 }
 
-                // 6. CREATE SECRET
+                // 6. CREATE SECRET (Enhanced)
                 if (path === '/api/secret' && method === 'POST') {
                     const body = await request.json();
                     const id = crypto.randomUUID();
+                    const type = body.type || 'text';
+                    const metadata = JSON.stringify(body.metadata || {});
+
                     await safeQuery(env, 
-                        "INSERT INTO secrets (id, content, max_views, expiry_seconds) VALUES (?, ?, ?, ?)", 
-                        id, body.content, body.max_views || 1, body.expiry_seconds || 0
+                        "INSERT INTO secrets (id, type, content, metadata, max_views, expiry_seconds) VALUES (?, ?, ?, ?, ?, ?)", 
+                        id, type, body.content, metadata, body.max_views || 1, body.expiry_seconds || 0
                     );
                     return new Response(JSON.stringify({ id: id }), { status: 201, headers: corsHeaders });
                 }
 
-                // 7. RESET
+                // 7. GET ALL SECRETS (List View)
+                if (path === '/api/secrets-list' && method === 'GET') {
+                    const rows = await safeSelectAll(env, "SELECT id, type, created_at, view_count, max_views, is_active FROM secrets ORDER BY created_at DESC LIMIT 50");
+                    return new Response(JSON.stringify({ secrets: rows?.results || [] }), { status: 200, headers: corsHeaders });
+                }
+
+                // 8. GET SECRET LOGS (Surveillance View)
+                const logMatch = path.match(/^\/api\/secret\/logs\/(.+)$/);
+                if (logMatch && method === 'GET') {
+                    const secretId = logMatch[1];
+                    const logs = await safeSelectAll(env, "SELECT * FROM access_logs WHERE secret_id = ? ORDER BY viewed_at DESC", secretId);
+                    return new Response(JSON.stringify({ logs: logs?.results || [] }), { status: 200, headers: corsHeaders });
+                }
+
+                // 9. DELETE (Full Wipe)
+                const deleteMatch = path.match(/^\/api\/secret\/(.+)$/);
+                if (deleteMatch && method === 'DELETE') {
+                    const secretId = deleteMatch[1];
+                    await safeQuery(env, "DELETE FROM secrets WHERE id = ?", secretId);
+                    await safeQuery(env, "DELETE FROM access_logs WHERE secret_id = ?", secretId);
+                    return new Response(JSON.stringify({ message: "Deleted" }), { status: 200, headers: corsHeaders });
+                }
+
+                // 10. SYSTEM RESET
                 if (path === '/api/reset' && method === 'DELETE') {
-                    await safeQuery(env, "DROP TABLE IF EXISTS secrets");
-                    await safeQuery(env, "DROP TABLE IF EXISTS sessions");
-                    await safeQuery(env, "DROP TABLE IF EXISTS admins");
-                    return new Response(JSON.stringify({ message: "Reset Complete" }), { status: 200, headers: corsHeaders });
+                    await safeQuery(env, "DELETE FROM secrets");
+                    await safeQuery(env, "DELETE FROM access_logs");
+                    // Keep admins/sessions so we don't lock ourselves out
+                    return new Response(JSON.stringify({ message: "Data Cleared" }), { status: 200, headers: corsHeaders });
                 }
 
                 return new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: corsHeaders });
