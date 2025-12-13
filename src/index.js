@@ -1,22 +1,23 @@
 // src/index.js
 import { generateSalt, hashPassword, verifyPassword, generateSessionId } from './security.js';
 
-// Helper to ensure tables exist (Cloudflare Free Tier Friendly: Minimal operations)
+// Robust DB Initialization
 async function initDB(env) {
-  // We use "IF NOT EXISTS" so this is safe to run.
-  // We combine queries to save round trips if possible, but D1 usually handles separate prepares well.
+  if (!env.DB) throw new Error("Database binding 'DB' not found in environment.");
   
-  const createAdmins = `
+  // Create Admins Table
+  await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS admins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       salt TEXT NOT NULL,
       created_at INTEGER DEFAULT (strftime('%s', 'now'))
     );
-  `;
+  `).run();
 
-  const createSessions = `
+  // Create Sessions Table
+  await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL,
@@ -24,12 +25,7 @@ async function initDB(env) {
       created_at INTEGER DEFAULT (strftime('%s', 'now')),
       FOREIGN KEY (user_id) REFERENCES admins(id)
     );
-  `;
-
-  // Execute schema creation
-  // We don't batch these to ensure we can catch specific errors if one fails
-  await env.DB.prepare(createAdmins).run();
-  await env.DB.prepare(createSessions).run();
+  `).run();
 }
 
 export default {
@@ -49,124 +45,131 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    // --- API ROUTES ---
-
-    // 1. CHECK SETUP STATUS (GET /api/check-setup)
-    // Called by frontend to see if we need to create the first admin
-    if (path === '/api/check-setup' && method === 'GET') {
+    // --- API ROUTING BLOCK ---
+    // We catch ALL /api/ requests here to ensure we always return JSON
+    if (path.startsWith('/api')) {
       try {
-        await initDB(env); // Ensure DB exists
-        const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
-        const setupRequired = countResult.count === 0;
-        return new Response(JSON.stringify({ setupRequired }), { status: 200, headers: corsHeaders });
+        // 1. CHECK SETUP (GET /api/check-setup)
+        if (path === '/api/check-setup' && method === 'GET') {
+          await initDB(env);
+          const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
+          // D1 returns { count: 0 } or sometimes just 0 depending on version, handle both
+          const count = countResult ? (countResult.count || 0) : 0;
+          return new Response(JSON.stringify({ setupRequired: count === 0 }), { status: 200, headers: corsHeaders });
+        }
+
+        // 2. SETUP (POST /api/setup)
+        if (path === '/api/setup' && method === 'POST') {
+          await initDB(env);
+          
+          const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
+          const count = countResult ? (countResult.count || 0) : 0;
+
+          if (count > 0) {
+             return new Response(JSON.stringify({ error: "Setup already completed." }), { status: 403, headers: corsHeaders });
+          }
+
+          let body;
+          try {
+            body = await request.json();
+          } catch(e) {
+            return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
+          }
+
+          const { username, password } = body;
+          
+          if (!username || !password || password.length < 6) {
+            return new Response(JSON.stringify({ error: "Invalid input. Password min 6 chars." }), { status: 400, headers: corsHeaders });
+          }
+
+          const salt = generateSalt();
+          const hash = await hashPassword(password, salt);
+          
+          const result = await env.DB.prepare(
+            "INSERT INTO admins (username, password_hash, salt) VALUES (?, ?, ?)"
+          ).bind(username, hash, salt).run();
+
+          if (result.success) {
+            return new Response(JSON.stringify({ message: "Admin created" }), { status: 201, headers: corsHeaders });
+          } else {
+            throw new Error("Failed to insert admin record.");
+          }
+        }
+
+        // 3. LOGIN (POST /api/login)
+        if (path === '/api/login' && method === 'POST') {
+          let body;
+          try {
+             body = await request.json();
+          } catch(e) {
+             return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
+          }
+          const { username, password } = body;
+
+          const user = await env.DB.prepare("SELECT * FROM admins WHERE username = ?").bind(username).first();
+          
+          if (!user || !(await verifyPassword(user.password_hash, password, user.salt))) {
+            return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
+          }
+
+          const sessionId = generateSessionId();
+          const expiresAt = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
+
+          await env.DB.prepare(
+            "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)"
+          ).bind(sessionId, user.id, expiresAt).run();
+
+          return new Response(JSON.stringify({ token: sessionId, message: "Login successful" }), { status: 200, headers: corsHeaders });
+        }
+
+        // 4. DASHBOARD (GET /api/dashboard)
+        if (path === '/api/dashboard' && method === 'GET') {
+          const authHeader = request.headers.get('Authorization');
+          const token = authHeader ? authHeader.split(' ')[1] : null;
+
+          if (!token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+
+          const session = await env.DB.prepare(
+            "SELECT sessions.*, admins.username FROM sessions JOIN admins ON sessions.user_id = admins.id WHERE sessions.id = ? AND sessions.expires_at > ?"
+          ).bind(token, Math.floor(Date.now() / 1000)).first();
+
+          if (!session) return new Response(JSON.stringify({ error: "Invalid Token" }), { status: 401, headers: corsHeaders });
+
+          let bucketObjects = [];
+          if (env.BUCKET) {
+             try {
+                const list = await env.BUCKET.list({ limit: 10 });
+                bucketObjects = list.objects.map(o => o.key);
+             } catch (e) {
+                console.error("Bucket Error", e);
+             }
+          }
+
+          return new Response(JSON.stringify({ 
+            message: `Welcome back, ${session.username}`,
+            bucket_files: bucketObjects,
+            stats: { active_sessions: 1 }
+          }), { status: 200, headers: corsHeaders });
+        }
+
+        // If path starts with /api/ but matches none of the above
+        return new Response(JSON.stringify({ error: "API Endpoint Not Found" }), { status: 404, headers: corsHeaders });
+
       } catch (err) {
-        return new Response(JSON.stringify({ error: "DB Init failed: " + err.message }), { status: 500, headers: corsHeaders });
+        // CATCH-ALL FOR SERVER ERRORS
+        return new Response(JSON.stringify({ error: "Server Error: " + err.message }), { status: 500, headers: corsHeaders });
       }
     }
 
-    // 2. SETUP / REGISTER (POST /api/setup)
-    // Only works if no admins exist
-    if (path === '/api/setup' && method === 'POST') {
-      try {
-        await initDB(env);
-        
-        // SECURITY CHECK: Ensure no admins exist
-        const countResult = await env.DB.prepare("SELECT COUNT(*) as count FROM admins").first();
-        if (countResult.count > 0) {
-          return new Response(JSON.stringify({ error: "Setup already completed. Please login." }), { status: 403, headers: corsHeaders });
-        }
-
-        const { username, password } = await request.json();
-        
-        if (!username || !password || password.length < 6) {
-          return new Response(JSON.stringify({ error: "Invalid input. Password min 6 chars." }), { status: 400, headers: corsHeaders });
-        }
-
-        const salt = generateSalt();
-        const hash = await hashPassword(password, salt);
-        
-        const result = await env.DB.prepare(
-          "INSERT INTO admins (username, password_hash, salt) VALUES (?, ?, ?)"
-        ).bind(username, hash, salt).run();
-
-        if (result.success) {
-          return new Response(JSON.stringify({ message: "Admin setup complete. You can now login." }), { status: 201, headers: corsHeaders });
-        } else {
-          throw new Error("DB Insert failed");
-        }
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
-      }
-    }
-
-    // 3. LOGIN (POST /api/login)
-    if (path === '/api/login' && method === 'POST') {
-      try {
-        const { username, password } = await request.json();
-
-        // Check user
-        const user = await env.DB.prepare("SELECT * FROM admins WHERE username = ?").bind(username).first();
-        
-        if (!user || !(await verifyPassword(user.password_hash, password, user.salt))) {
-          return new Response(JSON.stringify({ error: "Invalid credentials" }), { status: 401, headers: corsHeaders });
-        }
-
-        // Clean up old sessions (Basic housekeeping for free tier, removing expired ones)
-        // We do this async without awaiting to not block the login response
-        ctx.waitUntil(env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(Math.floor(Date.now() / 1000)).run());
-
-        // Create Session
-        const sessionId = generateSessionId();
-        const expiresAt = Math.floor(Date.now() / 1000) + (24 * 60 * 60); // 24 hours
-
-        await env.DB.prepare(
-          "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)"
-        ).bind(sessionId, user.id, expiresAt).run();
-
-        return new Response(JSON.stringify({ token: sessionId, message: "Login successful" }), { status: 200, headers: corsHeaders });
-
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
-      }
-    }
-
-    // 4. DASHBOARD DATA (GET /api/dashboard)
-    if (path === '/api/dashboard' && method === 'GET') {
-      const authHeader = request.headers.get('Authorization');
-      const token = authHeader ? authHeader.split(' ')[1] : null;
-
-      if (!token) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-      }
-
-      const session = await env.DB.prepare(
-        "SELECT sessions.*, admins.username FROM sessions JOIN admins ON sessions.user_id = admins.id WHERE sessions.id = ? AND sessions.expires_at > ?"
-      ).bind(token, Math.floor(Date.now() / 1000)).first();
-
-      if (!session) {
-        return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: corsHeaders });
-      }
-
-      let bucketObjects = [];
-      try {
-         const list = await env.BUCKET.list({ limit: 5 });
-         bucketObjects = list.objects.map(o => o.key);
-      } catch (e) {
-         console.log("Bucket Empty or Error", e);
-      }
-
-      return new Response(JSON.stringify({ 
-        message: `Welcome back, ${session.username}`,
-        bucket_files: bucketObjects,
-        stats: {
-          active_sessions: 1 
-        }
-      }), { status: 200, headers: corsHeaders });
-    }
-
-    // --- STATIC ASSET SERVING ---
+    // --- STATIC ASSETS ---
+    // Only fall through here if NOT an API call
     try {
-      return await env.ASSETS.fetch(request);
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status === 404) {
+         // Return a friendly 404 page or text if asset missing
+         return new Response("404 Page Not Found", { status: 404 });
+      }
+      return asset;
     } catch (e) {
       return new Response("Not Found", { status: 404 });
     }
