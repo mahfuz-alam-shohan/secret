@@ -32,14 +32,50 @@ async function safeSelectAll(env, query, ...args) {
     }
 }
 
-// --- INIT DB ---
+// --- INIT DB (AUTO-MIGRATION FIX) ---
 async function initDB(env) {
-    // We run the schema query separately in development, but this ensures tables exist
-    const check = await safeSelect(env, "SELECT name FROM sqlite_master WHERE type='table' AND name='access_logs'");
-    if (!check) {
-        // This is a fallback if you haven't run schema.sql manually. 
-        // Ideally, use 'wrangler d1 execute' with the schema file.
-        console.log("Tables missing. Please run schema.sql");
+    const queries = [
+        `CREATE TABLE IF NOT EXISTS admins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );`,
+        `CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            FOREIGN KEY (user_id) REFERENCES admins(id) ON DELETE CASCADE
+        );`,
+        `CREATE TABLE IF NOT EXISTS secrets (
+            id TEXT PRIMARY KEY,
+            type TEXT DEFAULT 'text',
+            content TEXT,
+            metadata TEXT DEFAULT '{}',
+            max_views INTEGER DEFAULT 1,
+            expiry_seconds INTEGER DEFAULT 0,
+            view_count INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            burned_at INTEGER DEFAULT NULL,
+            first_viewed_at INTEGER DEFAULT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );`,
+        `CREATE TABLE IF NOT EXISTS access_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            secret_id TEXT NOT NULL,
+            ip_address TEXT,
+            country TEXT,
+            city TEXT,
+            user_agent TEXT,
+            device_type TEXT,
+            viewed_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );`
+    ];
+    // We execute these sequentially to ensure order
+    for (const q of queries) {
+        await safeQuery(env, q);
     }
 }
 
@@ -62,7 +98,10 @@ export default {
 
         if (path.startsWith('/api')) {
             try {
-                // 1. PUBLIC: GET SECRET (The core viewer logic)
+                // CRITICAL FIX: Ensure tables exist before running any logic
+                await initDB(env);
+
+                // 1. PUBLIC: GET SECRET
                 const secretMatch = path.match(/^\/api\/secret\/(.+)$/);
                 if (secretMatch && method === 'GET') {
                     const secretId = secretMatch[1];
@@ -73,14 +112,13 @@ export default {
 
                     if (!secret) return new Response(JSON.stringify({ error: "Message not found." }), { status: 404, headers: corsHeaders });
 
-                    // B. Surveillance: Log the visitor details BEFORE validation
+                    // B. Surveillance: Log the visitor details
                     const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'Unknown';
                     const country = request.cf?.country || 'Unknown';
                     const city = request.cf?.city || 'Unknown';
                     const ua = request.headers.get('User-Agent') || 'Unknown';
                     const device = ua.includes('Mobile') ? 'Mobile' : 'Desktop';
                     
-                    // Don't log admin checks (if we add preview mode later), but for now log everything
                     await safeQuery(env, 
                         "INSERT INTO access_logs (secret_id, ip_address, country, city, user_agent, device_type) VALUES (?, ?, ?, ?, ?, ?)",
                         secretId, ip, country, city, ua, device
@@ -112,11 +150,8 @@ export default {
                         await safeQuery(env, "UPDATE secrets SET view_count = view_count + 1 WHERE id = ?", secretId);
                     }
 
-                    // G. Check if this view KILLS it (Burn on Read)
+                    // G. Check if this view KILLS it
                     if (secret.view_count + 1 > secret.max_views) {
-                         // We return the content THIS ONE LAST TIME, but mark it burned for next time
-                         // Actually, standard burn-on-read means we delete AFTER this response.
-                         // To be safe, we mark it burned in DB now, but return content in memory.
                          await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
                     }
 
@@ -186,7 +221,7 @@ export default {
                     }), { status: 200, headers: corsHeaders });
                 }
 
-                // 6. CREATE SECRET (Enhanced)
+                // 6. CREATE SECRET
                 if (path === '/api/secret' && method === 'POST') {
                     const body = await request.json();
                     const id = crypto.randomUUID();
@@ -200,13 +235,13 @@ export default {
                     return new Response(JSON.stringify({ id: id }), { status: 201, headers: corsHeaders });
                 }
 
-                // 7. GET ALL SECRETS (List View)
+                // 7. GET ALL SECRETS
                 if (path === '/api/secrets-list' && method === 'GET') {
                     const rows = await safeSelectAll(env, "SELECT id, type, created_at, view_count, max_views, is_active FROM secrets ORDER BY created_at DESC LIMIT 50");
                     return new Response(JSON.stringify({ secrets: rows?.results || [] }), { status: 200, headers: corsHeaders });
                 }
 
-                // 8. GET SECRET LOGS (Surveillance View)
+                // 8. GET SECRET LOGS
                 const logMatch = path.match(/^\/api\/secret\/logs\/(.+)$/);
                 if (logMatch && method === 'GET') {
                     const secretId = logMatch[1];
@@ -214,7 +249,7 @@ export default {
                     return new Response(JSON.stringify({ logs: logs?.results || [] }), { status: 200, headers: corsHeaders });
                 }
 
-                // 9. DELETE (Full Wipe)
+                // 9. DELETE
                 const deleteMatch = path.match(/^\/api\/secret\/(.+)$/);
                 if (deleteMatch && method === 'DELETE') {
                     const secretId = deleteMatch[1];
@@ -227,7 +262,6 @@ export default {
                 if (path === '/api/reset' && method === 'DELETE') {
                     await safeQuery(env, "DELETE FROM secrets");
                     await safeQuery(env, "DELETE FROM access_logs");
-                    // Keep admins/sessions so we don't lock ourselves out
                     return new Response(JSON.stringify({ message: "Data Cleared" }), { status: 200, headers: corsHeaders });
                 }
 
