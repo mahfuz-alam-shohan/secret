@@ -1,4 +1,5 @@
-/* === APPLICATION LOGIC === */
+/* === APPLICATION LOGIC (ROBUST VERSION) === */
+
 const API_BASE = '/api';
 let authToken = localStorage.getItem('auth_token');
 const urlParams = new URLSearchParams(window.location.search);
@@ -6,29 +7,174 @@ const secretId = urlParams.get('id');
 let countdownInterval;
 let pages = [];
 let currentPage = 0;
+let isEnvelopeOpen = false; // Flag to prevent double clicks
 
-// === INITIALIZATION ===
+// === ENTRY POINT ===
 window.onload = async () => {
     try {
         if (secretId) {
+            console.log("Mode: Viewer");
             await initViewer(secretId);
             document.getElementById('view-app').classList.remove('hidden');
         } else if (authToken) {
+            console.log("Mode: Dashboard");
             await initDashboard();
             document.getElementById('admin-app').classList.remove('hidden');
         } else {
+            console.log("Mode: Login");
             document.getElementById('login-app').classList.remove('hidden');
         }
     } catch(e) {
-        console.error("Init Error:", e);
+        console.error("Critical Init Error:", e);
+        // Fallback: remove loader anyway so user isn't staring at white screen
     } finally {
         setTimeout(() => document.getElementById('app-loader').classList.add('opacity-0', 'pointer-events-none'), 500);
     }
 };
 
-// === AUTHENTICATION ===
+/* ===========================
+   VIEWER LOGIC (FIXED)
+   =========================== */
+
+async function initViewer(id) {
+    try {
+        const res = await fetch(`${API_BASE}/secret/${id}`);
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+
+        // --- LOVE LETTER MODE ---
+        if (data.type === 'love-letter') {
+            const container = document.getElementById('view-love');
+            container.classList.remove('hidden');
+            
+            // Setup Content
+            paginateContent(data.content);
+            
+            // Setup Timer
+            if (data.settings && data.settings.remaining_seconds > 0) {
+                startTimer(data.settings.remaining_seconds, 'love-timer', 'love-timer-container');
+            }
+
+            // --- FAIL-SAFE CLICK HANDLER ---
+            // We attach the listener to the ENTIRE container, not just the envelope.
+            // This ensures clicks anywhere on the desk trigger the open.
+            container.addEventListener('click', () => triggerEnvelopeOpen());
+            container.addEventListener('touchstart', (e) => {
+                // Prevent ghost clicks but allow scroll
+                // e.preventDefault(); 
+                triggerEnvelopeOpen();
+            }, { passive: true });
+
+        } 
+        // --- STANDARD MODE ---
+        else {
+            const container = document.getElementById('view-standard');
+            container.classList.remove('hidden');
+            document.getElementById('view-content-std').innerText = data.content;
+            
+            if (data.settings && data.settings.remaining_seconds > 0) {
+                const w = document.getElementById('std-warning');
+                w.classList.remove('hidden'); w.style.display = 'flex';
+                startTimer(data.settings.remaining_seconds, 'std-timer');
+            }
+        }
+
+    } catch(e) {
+        document.getElementById('view-error').classList.remove('hidden');
+        document.getElementById('view-error-msg').innerText = e.message || "Secret unavailable";
+    }
+}
+
+function triggerEnvelopeOpen() {
+    if (isEnvelopeOpen) return; // Prevent double trigger
+    isEnvelopeOpen = true;
+
+    console.log("Opening Envelope Sequence Started...");
+
+    const stage = document.getElementById('envelope-stage');
+    
+    // 1. Animate Flap / Seal
+    stage.classList.add('opening');
+
+    // 2. Wait for flap animation, then zoom/fade
+    setTimeout(() => {
+        stage.classList.add('opened');
+        
+        // 3. Show Reading Overlay
+        document.getElementById('reading-overlay').classList.add('active');
+    }, 600);
+}
+
+// === PAGINATION SYSTEM ===
+function paginateContent(text) {
+    const charsPerPage = 500; 
+    pages = [];
+    let paragraphs = text.split('\n');
+    let buffer = "";
+    
+    paragraphs.forEach(para => {
+        if ((buffer.length + para.length) < charsPerPage) {
+            buffer += para + "\n\n";
+        } else {
+            if (buffer.length > 0) pages.push(buffer);
+            buffer = para + "\n\n";
+        }
+    });
+    if (buffer.length > 0) pages.push(buffer);
+    if (pages.length === 0) pages.push(text);
+
+    const container = document.getElementById('book-content');
+    if (container) {
+        container.innerHTML = '';
+        pages.forEach((txt, idx) => {
+            const d = document.createElement('div');
+            d.className = `page-slide ${idx === 0 ? 'active' : ''}`;
+            d.innerText = txt;
+            container.appendChild(d);
+        });
+    }
+    updateNav();
+}
+
+// Global Nav Functions (attached to window for HTML access)
+window.nextPage = function(e) {
+    if(e) e.stopPropagation(); // Prevent bubbling to container click
+    if (currentPage < pages.length - 1) showPage(currentPage + 1);
+};
+
+window.prevPage = function(e) {
+    if(e) e.stopPropagation();
+    if (currentPage > 0) showPage(currentPage - 1);
+};
+
+function showPage(index) {
+    const els = document.querySelectorAll('.page-slide');
+    if(index > currentPage) {
+        els[currentPage].classList.add('prev');
+        els[currentPage].classList.remove('active');
+    } else {
+        els[currentPage].classList.remove('active');
+        els[currentPage].classList.remove('prev');
+    }
+    currentPage = index;
+    els[currentPage].classList.remove('prev');
+    els[currentPage].classList.add('active');
+    updateNav();
+}
+
+function updateNav() {
+    const prev = document.querySelector('.nav-prev');
+    const next = document.querySelector('.nav-next');
+    if(prev) prev.classList.toggle('disabled', currentPage === 0);
+    if(next) next.classList.toggle('disabled', currentPage === pages.length - 1);
+}
+
+// === ADMIN & UTILS ===
+
+// Login
 const loginForm = document.getElementById('form-login');
-if (loginForm) {
+if(loginForm) {
     loginForm.onsubmit = async (e) => {
         e.preventDefault();
         const u = document.getElementById('login-user').value;
@@ -36,23 +182,17 @@ if (loginForm) {
         try {
             const res = await fetch(`${API_BASE}/login`, { method: 'POST', body: JSON.stringify({username:u, password:p}) });
             const data = await res.json();
-            if(data.token) { 
-                localStorage.setItem('auth_token', data.token); 
-                location.reload(); 
-            } else throw new Error();
-        } catch(e) { 
-            document.getElementById('login-error').classList.remove('hidden'); 
-        }
+            if(data.token) { localStorage.setItem('auth_token', data.token); location.reload(); }
+            else throw new Error();
+        } catch(e) { document.getElementById('login-error').classList.remove('hidden'); }
     };
 }
 
-function logout() { localStorage.removeItem('auth_token'); location.reload(); }
-
-// === ADMIN DASHBOARD ===
+// Dashboard
 async function initDashboard() {
     try {
         const res = await fetch(`${API_BASE}/dashboard`, { headers: { 'Authorization': `Bearer ${authToken}` } });
-        if(res.status === 401) return logout();
+        if(res.status === 401) { localStorage.removeItem('auth_token'); location.reload(); return; }
         
         const data = await res.json();
         const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
@@ -81,8 +221,10 @@ async function initDashboard() {
     } catch(e) { console.error("Dash Error:", e); }
 }
 
-if (document.getElementById('form-create')) {
-    document.getElementById('form-create').onsubmit = async (e) => {
+// Create Form
+const createForm = document.getElementById('form-create');
+if(createForm) {
+    createForm.onsubmit = async (e) => {
         e.preventDefault();
         const body = {
             content: document.getElementById('inp-content').value,
@@ -97,23 +239,19 @@ if (document.getElementById('form-create')) {
     };
 }
 
-// Function to handle global updates for the create form UI
+// Helpers
 window.updateTypeUI = function() {
     const val = document.querySelector('input[name="secret_type"]:checked').value;
     const t = document.getElementById('opt-text');
     const l = document.getElementById('opt-love-letter');
     if(!t || !l) return;
     
-    const activeClass = "border-brand-600 bg-brand-50";
-    const inactiveClass = "border-slate-100 hover:bg-slate-50";
-    const loveActiveClass = "border-pink-500 bg-pink-50";
-
     if(val === 'text') {
-        t.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${activeClass}`;
-        l.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${inactiveClass}`;
+        t.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all border-brand-600 bg-brand-50`;
+        l.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all border-slate-100 hover:bg-slate-50`;
     } else {
-        l.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${loveActiveClass}`;
-        t.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${inactiveClass}`;
+        l.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all border-pink-500 bg-pink-50`;
+        t.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all border-slate-100 hover:bg-slate-50`;
     }
 };
 
@@ -124,126 +262,18 @@ window.deleteSecret = async function(id) {
     }
 };
 
-// === VIEWER LOGIC ===
-async function initViewer(id) {
-    try {
-        const res = await fetch(`${API_BASE}/secret/${id}`);
-        const data = await res.json();
-        if(data.error) throw new Error(data.error);
-
-        if (data.type === 'love-letter') {
-            const loveView = document.getElementById('view-love');
-            loveView.classList.remove('hidden');
-            
-            // Attach Click Listeners HERE to ensure they work
-            const wrapper = document.getElementById('love-wrapper');
-            if(wrapper) {
-                wrapper.addEventListener('click', openEnvelope);
-                wrapper.addEventListener('touchstart', (e) => { e.preventDefault(); openEnvelope(); });
-            }
-
-            paginateContent(data.content);
-            if(data.settings.remaining_seconds > 0) startTimer(data.settings.remaining_seconds, 'love-timer', 'love-timer-container');
-        } else {
-            document.getElementById('view-standard').classList.remove('hidden');
-            document.getElementById('view-content-std').innerText = data.content;
-            if(data.settings.remaining_seconds > 0) {
-                const w = document.getElementById('std-warning');
-                w.classList.remove('hidden'); w.style.display = 'flex';
-                startTimer(data.settings.remaining_seconds, 'std-timer');
-            }
-        }
-    } catch(e) {
-        document.getElementById('view-error').classList.remove('hidden');
-        document.getElementById('view-error-msg').innerText = e.message;
-    }
-}
-
-// === ENVELOPE INTERACTION ===
-function openEnvelope() {
-    const env = document.getElementById('love-envelope');
-    if(!env.classList.contains('open')) {
-        console.log("Opening Envelope...");
-        env.classList.add('open');
-        
-        // Sequence: Open Flap -> Slide Paper Preview -> Zoom In
-        setTimeout(() => {
-            const stage = document.getElementById('love-stage');
-            const overlay = document.getElementById('reading-overlay');
-            if(stage) stage.classList.add('zoomed-out');
-            if(overlay) overlay.classList.add('active');
-        }, 800);
-    }
-}
-
-// === PAGINATION ===
-function paginateContent(text) {
-    const charsPerPage = 550; 
-    pages = [];
-    let paragraphs = text.split('\n');
-    let buffer = "";
-    
-    paragraphs.forEach(para => {
-        if ((buffer.length + para.length) < charsPerPage) {
-            buffer += para + "\n\n";
-        } else {
-            if (buffer.length > 0) pages.push(buffer);
-            buffer = para + "\n\n";
-        }
-    });
-    if (buffer.length > 0) pages.push(buffer);
-    if (pages.length === 0) pages.push(text); // Fallback
-
-    const container = document.getElementById('book-content');
-    if (container) {
-        container.innerHTML = '';
-        pages.forEach((txt, idx) => {
-            const d = document.createElement('div');
-            d.className = `page-slide ${idx === 0 ? 'active' : ''}`;
-            d.innerText = txt;
-            container.appendChild(d);
-        });
-    }
-    
-    // Check if we need nav buttons
-    if(pages.length <= 1) {
-        document.querySelectorAll('.nav-btn').forEach(b => b.style.display = 'none');
-    } else {
-        updateNavButtons();
-    }
-}
-
-window.nextPage = function() {
-    if (currentPage < pages.length - 1) showPage(currentPage + 1);
+window.copyResult = function() { 
+    document.getElementById('result-url').select(); document.execCommand('copy'); alert('Copied!'); 
 };
 
-window.prevPage = function() {
-    if (currentPage > 0) showPage(currentPage - 1);
+window.navTo = function(p) {
+    document.querySelectorAll('.page-view').forEach(x => x.classList.add('hidden'));
+    document.getElementById('page-'+p).classList.remove('hidden');
 };
 
-function showPage(index) {
-    const els = document.querySelectorAll('.page-slide');
-    if(index > currentPage) {
-        els[currentPage].classList.add('prev');
-        els[currentPage].classList.remove('active');
-    } else {
-        els[currentPage].classList.remove('active');
-        els[currentPage].classList.remove('prev');
-    }
-    currentPage = index;
-    els[currentPage].classList.remove('prev');
-    els[currentPage].classList.add('active');
-    updateNavButtons();
-}
+window.refreshData = function() { initDashboard(); };
+window.logout = function() { localStorage.removeItem('auth_token'); location.reload(); };
 
-function updateNavButtons() {
-    const prev = document.querySelector('.nav-prev');
-    const next = document.querySelector('.nav-next');
-    if(prev) prev.classList.toggle('disabled', currentPage === 0);
-    if(next) next.classList.toggle('disabled', currentPage === pages.length - 1);
-}
-
-// === TIMER & UTILS ===
 function startTimer(seconds, textId, containerId) {
     const el = document.getElementById(textId);
     if(containerId) document.getElementById(containerId).classList.remove('hidden');
@@ -259,15 +289,3 @@ function startTimer(seconds, textId, containerId) {
     }, 1000);
 }
 function fmt(s) { const m=Math.floor(s/60); const sc=s%60; return `${m}:${sc.toString().padStart(2,'0')}`; }
-
-window.copyResult = function() { 
-    const e = document.getElementById('result-url');
-    e.select(); document.execCommand('copy'); alert('Copied!'); 
-};
-
-window.navTo = function(p) {
-    document.querySelectorAll('.page-view').forEach(x => x.classList.add('hidden'));
-    document.getElementById('page-'+p).classList.remove('hidden');
-};
-
-window.refreshData = function() { initDashboard(); };
