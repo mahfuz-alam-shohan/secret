@@ -1,0 +1,130 @@
+/* === GLOBAL & UTILS === */
+body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Loader Animation */
+.loader-dots div { animation-timing-function: cubic-bezier(0, 1, 1, 0); }
+.loader-dots div:nth-child(1) { left: 8px; animation: loader-dots1 0.6s infinite; }
+.loader-dots div:nth-child(2) { left: 8px; animation: loader-dots2 0.6s infinite; }
+.loader-dots div:nth-child(3) { left: 32px; animation: loader-dots2 0.6s infinite; }
+.loader-dots div:nth-child(4) { left: 56px; animation: loader-dots3 0.6s infinite; }
+@keyframes loader-dots1 { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+@keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
+@keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
+
+/* === ENVELOPE STYLES (LOVE LETTER) === */
+.envelope-stage { 
+    perspective: 2000px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    height: 100%; 
+    transition: opacity 0.5s; 
+}
+.envelope-stage.faded { opacity: 0; pointer-events: none; }
+
+.envelope {
+    position: relative; width: 300px; height: 200px; background: #f43f5e;
+    border-radius: 0 0 10px 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    transition: transform 0.5s ease; transform-style: preserve-3d; cursor: pointer;
+}
+.envelope:hover { transform: scale(1.05) rotate(1deg); }
+.envelope.open .envelope-flap { transform: rotateX(180deg); z-index: 1; }
+
+.envelope-flap {
+    position: absolute; top: 0; left: 0; width: 0; height: 0;
+    border-left: 150px solid transparent; border-right: 150px solid transparent; border-top: 110px solid #e11d48;
+    transform-origin: top; transition: transform 0.6s 0.2s cubic-bezier(0.4, 0, 0.2, 1); z-index: 5;
+}
+.envelope-pocket {
+    position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none;
+}
+.envelope-pocket::before {
+    content: ''; position: absolute; bottom: 0; left: 0; border-left: 150px solid #fb7185;
+    border-top: 100px solid transparent; border-bottom: 100px solid #fb7185; border-radius: 0 0 0 10px;
+}
+.envelope-pocket::after {
+    content: ''; position: absolute; bottom: 0; right: 0; border-right: 150px solid #fda4af;
+    border-top: 100px solid transparent; border-bottom: 100px solid #fda4af; border-radius: 0 0 10px 0;
+}
+.heart-seal {
+    position: absolute; top: 70px; left: 50%; transform: translate(-50%, -50%);
+    color: gold; font-size: 40px; z-index: 6; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2)); transition: opacity 0.3s;
+}
+.envelope.open .heart-seal { opacity: 0; }
+
+/* === BOOKLET / LETTER READER === */
+#reading-overlay {
+    position: fixed; inset: 0; z-index: 50; 
+    background: rgba(255, 241, 242, 0.95); backdrop-filter: blur(5px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.8s ease;
+}
+#reading-overlay.active { opacity: 1; pointer-events: auto; }
+
+.letter-container {
+    position: relative; width: 90vw; max-width: 600px; height: 75vh;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15), 0 0 0 8px rgba(255, 255, 255, 0.5);
+    display: flex; flex-direction: column; overflow: hidden;
+    transform: scale(0.9); transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background-image: radial-gradient(#f0f0f0 1px, transparent 1px); background-size: 20px 20px;
+}
+#reading-overlay.active .letter-container { transform: scale(1); }
+
+/* Decorations */
+.flower-decor { position: absolute; font-size: 24px; color: #fbcfe8; pointer-events: none; z-index: 0; opacity: 0.8; }
+.flower-tl { top: 15px; left: 15px; transform: rotate(-45deg); color: #f472b6; }
+.flower-tr { top: 15px; right: 15px; transform: rotate(45deg); color: #f472b6; }
+.flower-bl { bottom: 15px; left: 15px; transform: rotate(-135deg); color: #fb7185; }
+.flower-br { bottom: 15px; right: 15px; transform: rotate(135deg); color: #fb7185; }
+.border-decor {
+    position: absolute; inset: 12px; border: 2px dashed #fecdd3; border-radius: 8px; pointer-events: none; z-index: 10;
+}
+
+/* Pagination */
+.book-content {
+    flex: 1; position: relative; overflow: hidden; margin: 40px 30px; z-index: 20;
+}
+.book-page {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    font-family: 'Patrick Hand', cursive; font-size: 1.25rem; line-height: 1.6; color: #475569;
+    opacity: 0; transform: translateX(20px); transition: all 0.4s ease; pointer-events: none;
+    overflow-y: auto; text-align: center; justify-content: center;
+}
+.book-page.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
+.book-page.slide-left { transform: translateX(-20px); opacity: 0; }
+
+/* Navigation Buttons */
+.nav-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; border-radius: 50%; background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); color: #fb7185;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: all 0.2s; z-index: 30; border: 1px solid #ffe4e6;
+}
+.nav-btn:hover { background: #fff1f2; transform: translateY(-50%) scale(1.1); }
+.nav-btn:active { transform: translateY(-50%) scale(0.95); }
+.nav-prev { left: -20px; } 
+.nav-next { right: -20px; }
+.nav-btn.disabled { opacity: 0; pointer-events: none; }
+
+.page-dots {
+    position: absolute; bottom: 15px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 6px; z-index: 30;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #e2e8f0; transition: background 0.3s; }
+.dot.active { background: #f43f5e; }
+
+/* Mobile Optimization */
+@media (max-width: 640px) {
+    .letter-container { width: 95vw; height: 80vh; max-height: 80vh; }
+    .nav-prev { left: -10px; } .nav-next { right: -10px; }
+    .book-content { margin: 35px 20px; }
+    .book-page { font-size: 1.15rem; }
+}
