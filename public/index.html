@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Secure Transmission Platform</title>
+    <title>Secure Transmission</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Patrick+Hand&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
     
-    <!-- Icons & CSS -->
+    <!-- Icons & Style -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="js/config.js"></script>
@@ -31,7 +31,7 @@
     </div>
 
     <!-- =========================
-         VIEWER APP (CINEMATIC)
+         VIEWER APP
          ========================= -->
     <div id="view-app" class="hidden flex-1 h-full relative">
         
@@ -50,58 +50,58 @@
              </div>
         </div>
 
-        <!-- LOVE LETTER UI (DESK SCENE) -->
-        <div id="view-love" class="hidden w-full h-full relative overflow-hidden bg-black">
-            <!-- 1. The Desk Environment -->
+        <!-- LOVE LETTER UI (CINEMATIC) -->
+        <div id="view-love" class="hidden w-full h-full relative overflow-hidden bg-[#2a1b15]">
+            <!-- Desk Background -->
             <div class="desk-surface"></div>
             <div class="desk-grain"></div>
 
-            <!-- 2. Scene Decorations (Atmosphere) -->
+            <!-- Props -->
             <div class="scene-object book-stack"><i class="fas fa-book"></i></div>
             <div class="scene-object coffee-cup"><i class="fas fa-mug-hot"></i></div>
-            <div class="scene-object glasses"><i class="fas fa-glasses"></i></div>
             <div class="scene-object pen"><i class="fas fa-pen-fancy"></i></div>
 
-            <!-- 3. Interactive Stage -->
+            <!-- Envelope Stage -->
             <div class="envelope-stage" id="love-stage">
-                <!-- Wrapper to ensure clickability -->
-                <div class="relative group cursor-pointer" onclick="openEnvelope()">
+                <!-- Wrapper for click detection -->
+                <div class="envelope-wrapper" id="love-wrapper">
                     <div class="envelope" id="love-envelope">
                         <div class="envelope-flap"></div>
+                        <div class="paper-preview"></div> <!-- Visible paper edge -->
                         <div class="envelope-pocket"></div>
                         <div class="wax-seal"><i class="fas fa-heart"></i></div>
                     </div>
-                    <!-- Helper Text -->
-                    <div class="absolute -bottom-16 w-full text-center">
-                        <p class="text-white/80 font-hand text-2xl animate-bounce drop-shadow-md">Open Me</p>
-                    </div>
+                </div>
+                <div class="absolute bottom-10 text-white/70 font-hand text-2xl animate-bounce pointer-events-none">
+                    Open Me
                 </div>
             </div>
 
-            <!-- 4. Reading Overlay (Paper Sheet) -->
+            <!-- Reading Overlay -->
             <div id="reading-overlay">
-                <!-- Navigation -->
-                <button class="nav-btn nav-prev" onclick="prevPage()"><i class="fas fa-chevron-left"></i></button>
-                <button class="nav-btn nav-next" onclick="nextPage()"><i class="fas fa-chevron-right"></i></button>
-
-                <div class="letter-sheet" id="letter-sheet">
-                    <!-- Timer Badge -->
-                    <div id="love-timer-container" class="absolute top-2 right-4 hidden z-20">
-                         <div class="bg-red-50 px-2 py-0.5 rounded border border-red-100 flex items-center gap-1 shadow-sm opacity-80 hover:opacity-100 transition-opacity">
-                             <i class="fas fa-stopwatch text-red-500 text-xs"></i>
-                             <span id="love-timer" class="font-mono font-bold text-red-600 text-xs">--:--</span>
-                         </div>
+                <!-- Reading Container -->
+                <div class="letter-sheet">
+                    <!-- Timer -->
+                    <div id="love-timer-container" class="absolute top-2 right-4 hidden z-50">
+                        <div class="bg-red-50/90 px-2 py-1 rounded border border-red-200 flex items-center gap-1 shadow-sm">
+                            <i class="fas fa-stopwatch text-red-500 text-xs"></i>
+                            <span id="love-timer" class="font-mono font-bold text-red-600 text-xs">--:--</span>
+                        </div>
                     </div>
 
-                    <!-- Content Container -->
-                    <div class="letter-content" id="book-content">
-                        <!-- Pages Injected Here -->
-                    </div>
+                    <!-- Content -->
+                    <div class="letter-content" id="book-content"></div>
 
                     <!-- Footer -->
-                    <div class="absolute bottom-2 w-full text-center">
-                        <p class="text-slate-400 font-hand text-sm opacity-50">Swipe / Click arrows to read</p>
+                    <div class="absolute bottom-1 w-full text-center text-slate-400 font-hand text-sm opacity-60">
+                        Read Carefully
                     </div>
+                </div>
+
+                <!-- Navigation Buttons (Outside Sheet) -->
+                <div class="absolute inset-0 flex items-center justify-between px-2 md:px-8 pointer-events-none">
+                    <button class="nav-btn nav-prev pointer-events-auto" onclick="prevPage()"><i class="fas fa-chevron-left"></i></button>
+                    <button class="nav-btn nav-next pointer-events-auto" onclick="nextPage()"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
@@ -109,17 +109,16 @@
         <!-- ERROR UI -->
         <div id="view-error" class="hidden w-full h-full flex flex-col items-center justify-center bg-slate-50 p-4 text-center relative z-50">
             <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-6 shadow-lg"><i class="fas fa-heart-broken text-3xl"></i></div>
-            <h2 class="text-3xl font-bold text-slate-900 mb-2">Message Destroyed</h2>
-            <p id="view-error-msg" class="text-slate-500 mb-8 max-w-md">This letter has expired or never existed.</p>
-            <a href="/" class="px-8 py-3 bg-slate-900 text-white font-bold rounded-full hover:bg-slate-800 transition shadow-lg">Create New</a>
+            <h2 class="text-3xl font-bold text-slate-900 mb-2">Unavailable</h2>
+            <p id="view-error-msg" class="text-slate-500 mb-8 max-w-md">This letter has vanished.</p>
+            <a href="/" class="px-8 py-3 bg-slate-900 text-white font-bold rounded-full hover:bg-slate-800 transition shadow-lg">New Message</a>
         </div>
     </div>
 
     <!-- =========================
-         ADMIN DASHBOARD (Standard)
+         ADMIN DASHBOARD
          ========================= -->
     <div id="admin-app" class="hidden flex h-full bg-white relative z-50">
-        <!-- Sidebar -->
         <aside class="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col border-r border-slate-800 flex-shrink-0">
             <div class="h-16 flex items-center px-6 border-b border-slate-800 text-white font-bold tracking-tight">
                 <i class="fas fa-lock mr-2 text-brand-500"></i> SecureOps
@@ -134,7 +133,6 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
             <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
                 <h2 id="page-title" class="text-lg font-bold text-slate-800">Overview</h2>
@@ -209,7 +207,6 @@
         </div>
     </div>
     
-    <!-- APP LOGIC -->
     <script src="js/app.js"></script>
 </body>
 </html>
