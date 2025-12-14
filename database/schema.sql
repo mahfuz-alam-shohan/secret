@@ -18,16 +18,25 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS secrets (
     id TEXT PRIMARY KEY,
-    type TEXT DEFAULT 'text',              -- 'text' OR 'love-letter'
+    type TEXT DEFAULT 'text',              -- 'text' OR 'proposal'
     content TEXT,                          -- The sensitive payload
     metadata TEXT DEFAULT '{}',            -- JSON extra data
     max_views INTEGER DEFAULT 1,           -- How many times it can be opened
     expiry_seconds INTEGER DEFAULT 0,      -- 0 = No timer (burns on view count only)
+    allow_reply INTEGER DEFAULT 0,         -- 1 = Viewer can send a reply after burn
     view_count INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,           -- 1 = Live, 0 = Destroyed
     burned_at INTEGER DEFAULT NULL,        -- Timestamp of destruction
     first_viewed_at INTEGER DEFAULT NULL,  -- Timer starts here
     created_at INTEGER DEFAULT (strftime('%s', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS replies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    secret_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (secret_id) REFERENCES secrets(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS access_logs (
