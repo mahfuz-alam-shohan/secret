@@ -10,158 +10,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Patrick+Hand&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
     
-    <!-- Icons & Utilities -->
+    <!-- Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Configuration -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                        hand: ['Patrick Hand', 'cursive'], 
-                        script: ['Dancing Script', 'cursive'],
-                    },
-                    colors: {
-                        brand: { 50: '#f0f9ff', 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e' },
-                        love: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 500: '#f43f5e', 600: '#e11d48' }
-                    },
-                    animation: {
-                        'float': 'float 6s ease-in-out infinite',
-                        'wiggle': 'wiggle 1s ease-in-out infinite',
-                        'pop-in': 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-                    },
-                    keyframes: {
-                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-20px)' } },
-                        wiggle: { '0%, 100%': { transform: 'rotate(-3deg)' }, '50%': { transform: 'rotate(3deg)' } },
-                        popIn: { '0%': { opacity: 0, transform: 'scale(0.8)' }, '100%': { opacity: 1, transform: 'scale(1)' } }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
-        
-        /* === ENVELOPE STYLES === */
-        .envelope-stage { perspective: 2000px; display: flex; justify-content: center; align-items: center; height: 100%; transition: opacity 0.5s; }
-        .envelope-stage.faded { opacity: 0; pointer-events: none; }
-        
-        .envelope {
-            position: relative; width: 300px; height: 200px; background: #f43f5e;
-            border-radius: 0 0 10px 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            transition: transform 0.5s ease; transform-style: preserve-3d; cursor: pointer;
-        }
-        .envelope:hover { transform: scale(1.05) rotate(1deg); }
-        .envelope.open .envelope-flap { transform: rotateX(180deg); z-index: 1; }
-        
-        .envelope-flap {
-            position: absolute; top: 0; left: 0; width: 0; height: 0;
-            border-left: 150px solid transparent; border-right: 150px solid transparent; border-top: 110px solid #e11d48;
-            transform-origin: top; transition: transform 0.6s 0.2s cubic-bezier(0.4, 0, 0.2, 1); z-index: 5;
-        }
-        .envelope-pocket {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none;
-        }
-        .envelope-pocket::before {
-            content: ''; position: absolute; bottom: 0; left: 0; border-left: 150px solid #fb7185;
-            border-top: 100px solid transparent; border-bottom: 100px solid #fb7185; border-radius: 0 0 0 10px;
-        }
-        .envelope-pocket::after {
-            content: ''; position: absolute; bottom: 0; right: 0; border-right: 150px solid #fda4af;
-            border-top: 100px solid transparent; border-bottom: 100px solid #fda4af; border-radius: 0 0 10px 0;
-        }
-        .heart-seal {
-            position: absolute; top: 70px; left: 50%; transform: translate(-50%, -50%);
-            color: gold; font-size: 40px; z-index: 6; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2)); transition: opacity 0.3s;
-        }
-        .envelope.open .heart-seal { opacity: 0; }
-
-        /* === EXPANDED LETTER / BOOKLET STYLES === */
-        #reading-overlay {
-            position: fixed; inset: 0; z-index: 50; 
-            background: rgba(255, 241, 242, 0.95); backdrop-filter: blur(5px);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.8s ease;
-        }
-        #reading-overlay.active { opacity: 1; pointer-events: auto; }
-
-        .letter-container {
-            position: relative; width: 90vw; max-width: 600px; height: 75vh;
-            background: #fff; border-radius: 12px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.15), 0 0 0 8px rgba(255, 255, 255, 0.5);
-            display: flex; flex-direction: column; overflow: hidden;
-            transform: scale(0.9); transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-            background-image: radial-gradient(#f0f0f0 1px, transparent 1px); background-size: 20px 20px;
-        }
-        #reading-overlay.active .letter-container { transform: scale(1); }
-
-        /* Flowery Decorations */
-        .flower-decor { position: absolute; font-size: 24px; color: #fbcfe8; pointer-events: none; z-index: 0; opacity: 0.8; }
-        .flower-tl { top: 15px; left: 15px; transform: rotate(-45deg); color: #f472b6; }
-        .flower-tr { top: 15px; right: 15px; transform: rotate(45deg); color: #f472b6; }
-        .flower-bl { bottom: 15px; left: 15px; transform: rotate(-135deg); color: #fb7185; }
-        .flower-br { bottom: 15px; right: 15px; transform: rotate(135deg); color: #fb7185; }
-        .border-decor {
-            position: absolute; inset: 12px; border: 2px dashed #fecdd3; border-radius: 8px; pointer-events: none; z-index: 10;
-        }
-
-        /* Pagination & Content */
-        .book-content {
-            flex: 1; position: relative; overflow: hidden; margin: 40px 30px; z-index: 20;
-        }
-        .book-page {
-            position: absolute; inset: 0; display: flex; flex-direction: column;
-            font-family: 'Patrick Hand', cursive; font-size: 1.25rem; line-height: 1.6; color: #475569;
-            opacity: 0; transform: translateX(20px); transition: all 0.4s ease; pointer-events: none;
-            overflow-y: auto; text-align: center; justify-content: center;
-        }
-        .book-page.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
-        .book-page.slide-left { transform: translateX(-20px); opacity: 0; }
-        
-        /* Controls */
-        .nav-btn {
-            position: absolute; top: 50%; transform: translateY(-50%);
-            width: 40px; height: 40px; border-radius: 50%; background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); color: #fb7185;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-            transition: all 0.2s; z-index: 30; border: 1px solid #ffe4e6;
-        }
-        .nav-btn:hover { background: #fff1f2; transform: translateY(-50%) scale(1.1); }
-        .nav-btn:active { transform: translateY(-50%) scale(0.95); }
-        .nav-prev { left: -20px; } 
-        .nav-next { right: -20px; }
-        .nav-btn.disabled { opacity: 0; pointer-events: none; }
-
-        .page-dots {
-            position: absolute; bottom: 15px; left: 0; right: 0;
-            display: flex; justify-content: center; gap: 6px; z-index: 30;
-        }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: #e2e8f0; transition: background 0.3s; }
-        .dot.active { background: #f43f5e; }
-
-        /* Loader */
-        .loader-dots div { animation-timing-function: cubic-bezier(0, 1, 1, 0); }
-        .loader-dots div:nth-child(1) { left: 8px; animation: loader-dots1 0.6s infinite; }
-        .loader-dots div:nth-child(2) { left: 8px; animation: loader-dots2 0.6s infinite; }
-        .loader-dots div:nth-child(3) { left: 32px; animation: loader-dots2 0.6s infinite; }
-        .loader-dots div:nth-child(4) { left: 56px; animation: loader-dots3 0.6s infinite; }
-        @keyframes loader-dots1 { 0% { transform: scale(0); } 100% { transform: scale(1); } }
-        @keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
-        @keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
-
-        /* Mobile Responsive Adjustments */
-        @media (max-width: 640px) {
-            .letter-container { width: 95vw; height: 80vh; max-height: 80vh; }
-            .nav-prev { left: -10px; } .nav-next { right: -10px; }
-            .book-content { margin: 35px 20px; }
-            .book-page { font-size: 1.15rem; }
-        }
-    </style>
+    
+    <!-- Config & Styles -->
+    <script src="js/config.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-slate-50 text-slate-900 h-screen flex flex-col overflow-hidden">
 
@@ -184,7 +41,6 @@
         
         <!-- STANDARD UI -->
         <div id="view-standard" class="hidden w-full h-full relative flex items-center justify-center">
-             <!-- Background Pattern -->
              <div class="absolute inset-0 z-0 opacity-[0.03]" style="background-image: radial-gradient(#64748b 1px, transparent 1px); background-size: 24px 24px;"></div>
              <div class="relative z-10 w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden m-4">
                  <div class="p-8">
@@ -211,26 +67,21 @@
                     <div class="envelope-flap"></div>
                     <div class="envelope-pocket"></div>
                     <div class="heart-seal"><i class="fas fa-heart"></i></div>
-                    
-                    <!-- Prompt -->
                     <div class="absolute -bottom-12 w-full text-center text-love-500 font-hand text-xl animate-bounce pointer-events-none">
                         Tap to Open
                     </div>
                 </div>
             </div>
 
-            <!-- Expanded Letter (Reading Mode) -->
+            <!-- Expanded Letter -->
             <div id="reading-overlay">
                 <div class="letter-container">
-                    <!-- Timer -->
                     <div id="love-timer-container" class="absolute top-4 left-0 right-0 flex justify-center z-40 hidden">
                          <div class="bg-love-50 px-3 py-1 rounded-full border border-love-100 flex items-center gap-2 shadow-sm">
                              <i class="fas fa-stopwatch text-love-500 animate-pulse"></i>
                              <span id="love-timer" class="font-mono font-bold text-love-600 text-sm">--:--</span>
                          </div>
                     </div>
-
-                    <!-- Flowers & Border -->
                     <div class="border-decor"></div>
                     <i class="fas fa-leaf flower-decor flower-tl"></i>
                     <i class="fas fa-leaf flower-decor flower-tr"></i>
@@ -238,17 +89,13 @@
                     <i class="fas fa-leaf flower-decor flower-br"></i>
 
                     <!-- Content (Pages) -->
-                    <div class="book-content" id="book-content">
-                        <!-- JS injects .book-page divs here -->
-                    </div>
+                    <div class="book-content" id="book-content"></div>
 
                     <!-- Navigation -->
                     <button class="nav-btn nav-prev" onclick="prevPage()"><i class="fas fa-chevron-left"></i></button>
                     <button class="nav-btn nav-next" onclick="nextPage()"><i class="fas fa-chevron-right"></i></button>
-                    
                     <div class="page-dots" id="page-dots"></div>
                 </div>
-                
                 <p class="mt-6 text-love-300 font-hand text-lg animate-pulse">Swipe to read &bull; Made with Love</p>
             </div>
         </div>
@@ -355,290 +202,8 @@
             <button onclick="location.reload()" class="w-full py-2 bg-slate-900 text-white font-bold rounded">Done</button>
         </div>
     </div>
-
-    <!-- LOGIC -->
-    <script>
-        const API_BASE = '/api';
-        let authToken = localStorage.getItem('auth_token');
-        const urlParams = new URLSearchParams(window.location.search);
-        const secretId = urlParams.get('id');
-        let countdownInterval;
-        let pages = [];
-        let currentPage = 0;
-
-        window.onload = async () => {
-            if (secretId) {
-                await initViewer(secretId);
-                document.getElementById('view-app').classList.remove('hidden');
-            } else if (authToken) {
-                await initDashboard();
-                document.getElementById('admin-app').classList.remove('hidden');
-            } else {
-                document.getElementById('login-app').classList.remove('hidden');
-            }
-            setTimeout(() => document.getElementById('app-loader').classList.add('opacity-0', 'pointer-events-none'), 500);
-        };
-
-        // --- AUTH ---
-        document.getElementById('form-login').onsubmit = async (e) => {
-            e.preventDefault();
-            const u = document.getElementById('login-user').value;
-            const p = document.getElementById('login-pass').value;
-            try {
-                const res = await fetch(`${API_BASE}/login`, { method: 'POST', body: JSON.stringify({username:u, password:p}) });
-                const data = await res.json();
-                if(data.token) { localStorage.setItem('auth_token', data.token); location.reload(); }
-                else throw new Error();
-            } catch(e) { document.getElementById('login-error').classList.remove('hidden'); }
-        };
-        function logout() { localStorage.removeItem('auth_token'); location.reload(); }
-
-        // --- DASHBOARD ---
-        async function initDashboard() {
-            try {
-                const res = await fetch(`${API_BASE}/dashboard`, { headers: { 'Authorization': `Bearer ${authToken}` } });
-                if(res.status === 401) return logout();
-                const data = await res.json();
-                document.getElementById('stat-active').innerText = data.stats.active_secrets;
-                document.getElementById('stat-views').innerText = data.stats.total_views;
-                document.getElementById('stat-burned').innerText = data.stats.burned_secrets;
-                
-                const lRes = await fetch(`${API_BASE}/secrets-list`, { headers: { 'Authorization': `Bearer ${authToken}` } });
-                const list = await lRes.json();
-                const tbody = document.getElementById('table-secrets');
-                tbody.innerHTML = '';
-                list.secrets.forEach(s => {
-                    tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 border-b border-slate-50">
-                        <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full text-xs font-bold ${s.is_active?'bg-green-100 text-green-700':'bg-red-50 text-red-500'}">${s.is_active?'Active':'Burned'}</span></td>
-                        <td class="px-6 py-4 capitalize text-slate-500">${s.type}</td>
-                        <td class="px-6 py-4 font-mono text-xs text-slate-400">${s.id.substring(0,8)}...</td>
-                        <td class="px-6 py-4 text-center font-bold">${s.view_count}</td>
-                        <td class="px-6 py-4 text-right"><button onclick="deleteSecret('${s.id}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button></td>
-                    </tr>`;
-                });
-            } catch(e) { console.error(e); }
-        }
-
-        document.getElementById('form-create').onsubmit = async (e) => {
-            e.preventDefault();
-            const body = {
-                content: document.getElementById('inp-content').value,
-                type: document.querySelector('input[name="secret_type"]:checked').value,
-                max_views: document.getElementById('inp-views').value,
-                expiry_seconds: document.getElementById('inp-ttl').value
-            };
-            const res = await fetch(`${API_BASE}/secret`, { method:'POST', headers:{'Authorization':`Bearer ${authToken}`}, body: JSON.stringify(body) });
-            const data = await res.json();
-            document.getElementById('result-url').value = `${location.origin}?id=${data.id}`;
-            document.getElementById('modal-success').classList.remove('hidden');
-        };
-
-        function updateTypeUI() {
-            const val = document.querySelector('input[name="secret_type"]:checked').value;
-            const t = document.getElementById('opt-text');
-            const l = document.getElementById('opt-love-letter');
-            if(val === 'text') {
-                t.className = "cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-                l.className = "cursor-pointer border-2 border-slate-100 hover:bg-pink-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-            } else {
-                l.className = "cursor-pointer border-2 border-pink-500 bg-pink-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-                t.className = "cursor-pointer border-2 border-slate-100 hover:bg-brand-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-            }
-        }
-        
-        async function deleteSecret(id) {
-            if(confirm("Destroy?")) {
-                await fetch(`${API_BASE}/secret/${id}`, { method:'DELETE', headers:{'Authorization':`Bearer ${authToken}`} });
-                initDashboard();
-            }
-        }
-
-        // === VIEWER & PAGINATION LOGIC ===
-        async function initViewer(id) {
-            try {
-                const res = await fetch(`${API_BASE}/secret/${id}`);
-                const data = await res.json();
-                if(data.error) throw new Error(data.error);
-
-                if (data.type === 'love-letter') {
-                    document.getElementById('view-love').classList.remove('hidden');
-                    paginateContent(data.content);
-                    if(data.settings.remaining_seconds > 0) startTimer(data.settings.remaining_seconds, 'love-timer', 'love-timer-container');
-                } else {
-                    document.getElementById('view-standard').classList.remove('hidden');
-                    document.getElementById('view-content-std').innerText = data.content;
-                    if(data.settings.remaining_seconds > 0) {
-                        document.getElementById('std-warning').classList.remove('hidden');
-                        document.getElementById('std-warning').style.display = 'flex';
-                        startTimer(data.settings.remaining_seconds, 'std-timer');
-                    }
-                }
-            } catch(e) {
-                document.getElementById('view-error').classList.remove('hidden');
-                document.getElementById('view-error-msg').innerText = e.message;
-            }
-        }
-
-        function paginateContent(text) {
-            // "Kiddy" heuristic: Roughly 600 chars per page to ensure large font fits
-            const charsPerPage = 600; 
-            pages = [];
-            // Simple split logic: try to split by paragraphs first
-            let paragraphs = text.split('\n');
-            let currentPageText = "";
-            
-            paragraphs.forEach(para => {
-                if ((currentPageText.length + para.length) < charsPerPage) {
-                    currentPageText += para + "\n\n";
-                } else {
-                    if (currentPageText.length > 0) pages.push(currentPageText);
-                    // If a single para is huge, force split it
-                    if (para.length > charsPerPage) {
-                        let chunks = para.match(new RegExp('.{1,' + charsPerPage + '}', 'g'));
-                        chunks.forEach((chunk, i) => {
-                             if (i < chunks.length - 1) pages.push(chunk);
-                             else currentPageText = chunk + "\n\n";
-                        });
-                    } else {
-                        currentPageText = para + "\n\n";
-                    }
-                }
-            });
-            if (currentPageText.length > 0) pages.push(currentPageText);
-            
-            // Render Pages
-            const container = document.getElementById('book-content');
-            const dots = document.getElementById('page-dots');
-            container.innerHTML = '';
-            dots.innerHTML = '';
-            
-            pages.forEach((pageContent, idx) => {
-                const pageDiv = document.createElement('div');
-                pageDiv.className = `book-page ${idx === 0 ? 'active' : ''}`;
-                pageDiv.innerText = pageContent;
-                container.appendChild(pageDiv);
-
-                const dot = document.createElement('div');
-                dot.className = `dot ${idx === 0 ? 'active' : ''}`;
-                dots.appendChild(dot);
-            });
-
-            // Handle Single Page
-            if (pages.length <= 1) {
-                document.querySelector('.nav-prev').style.display = 'none';
-                document.querySelector('.nav-next').style.display = 'none';
-            } else {
-                updateNavButtons();
-            }
-
-            // Init Swipe
-            setupSwipe(container);
-        }
-
-        function openEnvelope() {
-            const env = document.getElementById('love-envelope');
-            if(!env.classList.contains('open')) {
-                env.classList.add('open');
-                
-                // Animation Sequence
-                setTimeout(() => {
-                    document.getElementById('love-stage').classList.add('faded');
-                    document.getElementById('reading-overlay').classList.add('active');
-                }, 800);
-            }
-        }
-
-        function nextPage() {
-            if (currentPage < pages.length - 1) {
-                showPage(currentPage + 1);
-            }
-        }
-
-        function prevPage() {
-            if (currentPage > 0) {
-                showPage(currentPage - 1);
-            }
-        }
-
-        function showPage(index) {
-            const pageEls = document.querySelectorAll('.book-page');
-            const dotEls = document.querySelectorAll('.dot');
-            
-            // Current slides out
-            if (index > currentPage) {
-                pageEls[currentPage].classList.add('slide-left');
-                pageEls[currentPage].classList.remove('active');
-            } else {
-                 pageEls[currentPage].classList.remove('active');
-                 // Reset transform for sliding right feel? Simple crossfade is safer
-                 pageEls[currentPage].style.transform = 'translateX(20px)';
-            }
-
-            currentPage = index;
-            
-            // Reset state for new active
-            pageEls[currentPage].classList.remove('slide-left');
-            pageEls[currentPage].style.transform = 'translateX(0)';
-            pageEls[currentPage].classList.add('active');
-
-            // Dots
-            dotEls.forEach(d => d.classList.remove('active'));
-            dotEls[currentPage].classList.add('active');
-
-            updateNavButtons();
-        }
-
-        function updateNavButtons() {
-            const prev = document.querySelector('.nav-prev');
-            const next = document.querySelector('.nav-next');
-            prev.classList.toggle('disabled', currentPage === 0);
-            next.classList.toggle('disabled', currentPage === pages.length - 1);
-        }
-
-        function setupSwipe(element) {
-            let touchStartX = 0;
-            let touchEndX = 0;
-            
-            element.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, false);
-            element.addEventListener('touchend', e => {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
-            }, false);
-
-            function handleSwipe() {
-                if (touchEndX < touchStartX - 50) nextPage(); // Swiped Left
-                if (touchEndX > touchStartX + 50) prevPage(); // Swiped Right
-            }
-        }
-
-        // --- TIMER ---
-        function startTimer(seconds, textId, containerId) {
-            const text = document.getElementById(textId);
-            if(containerId) document.getElementById(containerId).classList.remove('hidden');
-            let timeLeft = seconds;
-            text.innerText = formatTime(timeLeft);
-            
-            countdownInterval = setInterval(() => {
-                timeLeft--;
-                text.innerText = formatTime(timeLeft);
-                if (timeLeft <= 0) {
-                    clearInterval(countdownInterval);
-                    document.body.innerHTML = ''; document.body.style.background='black';
-                    setTimeout(() => location.reload(), 100);
-                }
-            }, 1000);
-        }
-        function formatTime(s) { const m=Math.floor(s/60); const sec=s%60; return `${m}:${sec.toString().padStart(2,'0')}`; }
-        
-        // --- UTILS ---
-        function copyResult() { document.getElementById('result-url').select(); document.execCommand('copy'); alert('Copied!'); }
-        function navTo(p) { 
-            document.querySelectorAll('.page-view').forEach(x=>x.classList.add('hidden')); 
-            document.getElementById('page-'+p).classList.remove('hidden'); 
-        }
-        function refreshData() { initDashboard(); }
-
-    </script>
+    
+    <!-- APPLICATION LOGIC -->
+    <script src="js/app.js"></script>
 </body>
 </html>
