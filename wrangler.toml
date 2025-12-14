@@ -1,4 +1,4 @@
-name = "secret"
+name = "secret-platform"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
@@ -7,11 +7,13 @@ compatibility_date = "2024-11-01"
 directory = "public"
 binding = "ASSETS"
 
+# D1 Database Binding
 [[d1_databases]]
 binding = "DB"
 database_name = "secret"
 database_id = "2e8b8482-f6bd-43ee-bdf9-7394a23cd76e"
 
+# R2 Storage Binding (For file uploads if needed in future)
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "secret"
