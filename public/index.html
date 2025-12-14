@@ -3,23 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Secure Transmission</title>
+    <title>Secure Transmission Platform</title>
     
-    <!-- Fonts -->
+    <!-- Professional Typography: Inter for UI, JetBrains Mono for Secrets -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- Icons & Style -->
+    <!-- Icons & Utilities -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="js/config.js"></script>
-    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7', // Primary Brand Color
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        },
+                        slate: {
+                            850: '#1e293b', 
+                            900: '#0f172a',
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'card': '0 0 0 1px rgba(0,0,0,0.03), 0 2px 8px rgba(0,0,0,0.04)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        
+        /* Clean Transitions */
+        .fade-enter { opacity: 0; transform: translateY(10px); }
+        .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s ease, transform 0.3s ease; }
+        .fade-exit { opacity: 1; }
+        .fade-exit-active { opacity: 0; transition: opacity 0.2s ease; }
+        
+        /* Custom Scrollbar for professional feel */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Loader */
+        .loader-dots div { animation-timing-function: cubic-bezier(0, 1, 1, 0); }
+        .loader-dots div:nth-child(1) { left: 8px; animation: loader-dots1 0.6s infinite; }
+        .loader-dots div:nth-child(2) { left: 8px; animation: loader-dots2 0.6s infinite; }
+        .loader-dots div:nth-child(3) { left: 32px; animation: loader-dots2 0.6s infinite; }
+        .loader-dots div:nth-child(4) { left: 56px; animation: loader-dots3 0.6s infinite; }
+        @keyframes loader-dots1 { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        @keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
+        @keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-900 h-screen flex flex-col overflow-hidden">
 
-    <!-- LOADER -->
-    <div id="app-loader" class="fixed inset-0 bg-white z-[9000] flex items-center justify-center transition-opacity duration-500">
+    <!-- === TOAST NOTIFICATIONS === -->
+    <div id="toast-container" class="fixed top-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- === GLOBAL LOADER === -->
+    <div id="app-loader" class="fixed inset-0 bg-white z-[90] flex items-center justify-center transition-opacity duration-500">
         <div class="loader-dots relative w-20 h-20">
             <div class="absolute top-[33px] w-[13px] h-[13px] rounded-full bg-brand-600"></div>
             <div class="absolute top-[33px] w-[13px] h-[13px] rounded-full bg-brand-600"></div>
@@ -29,165 +88,667 @@
     </div>
 
     <!-- =========================
-         VIEWER APP (CINEMATIC)
+         VIEWER APP (Public Access)
          ========================= -->
-    <div id="view-app" class="hidden flex-1 h-full relative">
+    <div id="view-app" class="hidden flex-1 flex flex-col h-full relative">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 z-0 opacity-[0.03]" style="background-image: radial-gradient(#64748b 1px, transparent 1px); background-size: 24px 24px;"></div>
         
-        <!-- STANDARD UI -->
-        <div id="view-standard" class="hidden w-full h-full relative flex items-center justify-center">
-             <div class="absolute inset-0 z-0 opacity-[0.03]" style="background-image: radial-gradient(#64748b 1px, transparent 1px); background-size: 24px 24px;"></div>
-             <div class="relative z-10 w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden m-4">
-                 <div class="p-8">
-                     <div id="std-warning" class="hidden mb-6 p-4 rounded-lg bg-amber-50 border border-amber-100 flex justify-between items-center">
-                          <div class="flex items-center gap-2"><i class="fas fa-clock text-amber-500"></i><span class="text-sm font-bold text-amber-800">Self-Destruct</span></div>
-                          <span id="std-timer" class="font-mono font-bold text-amber-600">00:00</span>
-                     </div>
-                     <div id="view-content-std" class="font-mono text-sm leading-relaxed text-slate-700 whitespace-pre-wrap bg-slate-50 p-6 rounded-lg border border-slate-100 min-h-[120px]"></div>
-                     <div class="mt-6 text-center"><a href="/" class="text-sm text-brand-600 hover:underline">Create New</a></div>
-                 </div>
-             </div>
-        </div>
-
-        <!-- LOVE LETTER UI (ROBUST) -->
-        <div id="view-love" class="hidden w-full h-full relative overflow-hidden">
-            <!-- Background Decorations (Non-Clickable) -->
-            <i class="fas fa-book desk-decor decor-book"></i>
-            <i class="fas fa-mug-hot desk-decor decor-cup"></i>
-            <i class="fas fa-glasses desk-decor decor-glasses"></i>
-            <i class="fas fa-pen-fancy desk-decor decor-pen"></i>
-
-            <!-- Interactive Stage (Z-Index 10) -->
-            <div class="envelope-stage" id="envelope-stage">
-                <div class="envelope-body">
-                    <div class="flap"></div>
-                    <div class="pocket"></div>
-                    <div class="seal"><i class="fas fa-heart"></i></div>
-                </div>
-                <div class="click-hint">CLICK TO OPEN</div>
-            </div>
-
-            <!-- Reading Overlay (Z-Index 50) -->
-            <div id="reading-overlay">
-                <!-- Navigation -->
-                <button class="nav-btn nav-prev" onclick="prevPage(event)"><i class="fas fa-chevron-left"></i></button>
-                <button class="nav-btn nav-next" onclick="nextPage(event)"><i class="fas fa-chevron-right"></i></button>
-
-                <div class="letter-sheet">
-                    <!-- Timer -->
-                    <div id="love-timer-container" class="absolute top-2 right-4 hidden z-50">
-                        <div class="bg-red-50/90 px-2 py-1 rounded border border-red-200 flex items-center gap-1 shadow-sm">
-                            <i class="fas fa-stopwatch text-red-500 text-xs"></i>
-                            <span id="love-timer" class="font-mono font-bold text-red-600 text-xs">--:--</span>
+        <div class="relative z-10 flex flex-col items-center justify-center min-h-screen p-4">
+            
+            <!-- Secure Card -->
+            <div id="secret-card" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden transform transition-all duration-500 opacity-0 translate-y-4">
+                
+                <!-- Card Header -->
+                <div class="bg-slate-50/50 px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-brand-50 flex items-center justify-center text-brand-600">
+                            <i class="fas fa-shield-halved text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-bold text-slate-800">Secure Transmission</h1>
+                            <div class="flex items-center gap-2 text-xs text-slate-500">
+                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                <span>End-to-End Encrypted</span>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- Content -->
-                    <div class="letter-content" id="book-content"></div>
+                    <div class="text-right hidden sm:block">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Transmission ID</p>
+                        <p id="view-id" class="font-mono text-xs text-slate-600">...</p>
+                    </div>
+                </div>
+
+                <!-- Card Content -->
+                <div class="p-8">
+                    <!-- Warning / Status -->
+                    <div id="view-warning" class="hidden mb-6 p-4 rounded-lg bg-amber-50 border border-amber-100 flex items-start gap-3">
+                        <i class="fas fa-exclamation-triangle text-amber-500 mt-1"></i>
+                        <div>
+                            <h3 class="text-sm font-bold text-amber-800">Self-Destruct Sequence</h3>
+                            <p class="text-xs text-amber-700 mt-1">This message will be permanently deleted after this viewing.</p>
+                        </div>
+                    </div>
+
+                    <!-- The Content -->
+                    <div class="relative group">
+                        <div id="view-content" class="font-mono text-sm leading-relaxed text-slate-700 whitespace-pre-wrap bg-slate-50 p-6 rounded-lg border border-slate-100 min-h-[120px] select-text">
+                            <!-- Content injected here -->
+                        </div>
+                        <button onclick="copyContent()" class="absolute top-2 right-2 p-2 bg-white rounded shadow-sm border border-slate-200 text-slate-400 hover:text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Copy Text">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+
+                    <!-- Metadata -->
+                    <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <p class="text-xs text-slate-400">
+                            Generated by <span class="font-bold text-slate-600">SecurePlatform</span>
+                        </p>
+                        <a href="/" class="text-sm font-medium text-brand-600 hover:text-brand-700 transition">
+                            Send a secure message &rarr;
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ERROR UI -->
-        <div id="view-error" class="hidden w-full h-full flex flex-col items-center justify-center bg-slate-50 p-4 text-center relative z-50">
-            <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-6 shadow-lg"><i class="fas fa-heart-broken text-3xl"></i></div>
-            <h2 class="text-3xl font-bold text-slate-900 mb-2">Unavailable</h2>
-            <p id="view-error-msg" class="text-slate-500 mb-8 max-w-md">This letter has vanished.</p>
-            <a href="/" class="px-8 py-3 bg-slate-900 text-white font-bold rounded-full hover:bg-slate-800 transition shadow-lg">New Message</a>
+            <!-- Error State -->
+            <div id="view-error" class="hidden text-center max-w-md">
+                <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mx-auto mb-6">
+                    <i class="fas fa-ban text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
+                <p id="view-error-msg" class="text-slate-500 mb-8">This secret does not exist or has already been destroyed.</p>
+                <a href="/" class="inline-flex items-center justify-center px-6 py-3 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition shadow-lg shadow-slate-200/50">
+                    Create New Secret
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- =========================
-         ADMIN DASHBOARD
+         ADMIN DASHBOARD APP
          ========================= -->
-    <div id="admin-app" class="hidden flex h-full bg-white relative z-50">
-        <aside class="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col border-r border-slate-800 flex-shrink-0">
-            <div class="h-16 flex items-center px-6 border-b border-slate-800 text-white font-bold tracking-tight">
-                <i class="fas fa-lock mr-2 text-brand-500"></i> SecureOps
+    <div id="admin-app" class="hidden flex h-full bg-white">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 flex-shrink-0 transition-all duration-300" id="sidebar">
+            <div class="h-16 flex items-center px-6 border-b border-slate-800">
+                <div class="flex items-center gap-2 text-white font-bold tracking-tight">
+                    <div class="w-6 h-6 rounded bg-brand-500 flex items-center justify-center text-xs">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <span>Secure<span class="text-brand-500">Ops</span></span>
+                </div>
             </div>
-            <nav class="flex-1 p-4 space-y-2">
-                <button onclick="navTo('dashboard')" class="w-full text-left px-4 py-2 rounded bg-slate-800 text-white"><i class="fas fa-chart-pie mr-2 text-brand-500"></i> Overview</button>
-                <button onclick="navTo('create')" class="w-full text-left px-4 py-2 rounded hover:bg-slate-800 hover:text-white"><i class="fas fa-plus mr-2 text-brand-500"></i> New Secret</button>
+
+            <nav class="flex-1 p-4 space-y-1">
+                <p class="px-2 text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 mt-2">Platform</p>
+                
+                <button onclick="navTo('dashboard')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-white bg-slate-800" data-target="dashboard">
+                    <i class="fas fa-grid-2 text-brand-500 w-5 text-center"></i>
+                    <span class="text-sm font-medium">Overview</span>
+                </button>
+                
+                <button onclick="navTo('create')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 hover:bg-slate-800 hover:text-white transition-colors" data-target="create">
+                    <i class="fas fa-plus-circle text-brand-500 w-5 text-center"></i>
+                    <span class="text-sm font-medium">New Transmission</span>
+                </button>
+
+                <p class="px-2 text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 mt-6">System</p>
+                
+                <button class="nav-item w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 hover:bg-slate-800 hover:text-white transition-colors opacity-50 cursor-not-allowed">
+                    <i class="fas fa-cog text-slate-500 w-5 text-center"></i>
+                    <span class="text-sm font-medium">Settings</span>
+                </button>
             </nav>
-            <div class="p-4 border-t border-slate-800 flex justify-between items-center">
-                <span id="user-name" class="text-xs font-bold text-white">Admin</span>
-                <button onclick="logout()" class="text-xs hover:text-white">Sign Out</button>
+
+            <div class="p-4 border-t border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-lg">
+                        <span id="user-initial">A</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="user-name" class="text-sm font-medium text-white truncate">Admin</p>
+                        <p class="text-xs text-slate-500 truncate">Authenticated</p>
+                    </div>
+                    <button onclick="logout()" class="text-slate-500 hover:text-white transition"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
             </div>
         </aside>
 
+        <!-- Main Content -->
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <!-- Topbar -->
             <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
                 <h2 id="page-title" class="text-lg font-bold text-slate-800">Overview</h2>
-                <div class="flex gap-4">
-                    <button onclick="navTo('create')" class="md:hidden text-brand-600"><i class="fas fa-plus"></i></button>
-                    <button onclick="refreshData()" class="text-slate-400 hover:text-brand-600"><i class="fas fa-rotate" id="refresh-icon"></i></button>
+                <div class="flex items-center gap-4">
+                    <button onclick="refreshData()" class="text-slate-400 hover:text-brand-600 transition p-2 rounded-full hover:bg-slate-50">
+                        <i class="fas fa-rotate" id="refresh-icon"></i>
+                    </button>
                 </div>
             </header>
 
+            <!-- Page: Dashboard -->
             <div id="page-dashboard" class="page-view flex-1 overflow-y-auto p-8">
+                <!-- Metrics -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Active</p><p class="text-3xl font-bold text-slate-800" id="stat-active">--</p></div>
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Views</p><p class="text-3xl font-bold text-slate-800" id="stat-views">--</p></div>
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 uppercase font-bold">Burned</p><p class="text-3xl font-bold text-slate-800" id="stat-burned">--</p></div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-medium text-slate-500">Active Secrets</h3>
+                            <span class="bg-green-50 text-green-600 text-xs px-2 py-1 rounded-full font-bold">+Live</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800" id="stat-active">--</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-medium text-slate-500">Total Views</h3>
+                            <i class="fas fa-eye text-brand-200"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800" id="stat-views">--</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-medium text-slate-500">Burned / Expired</h3>
+                            <i class="fas fa-fire text-orange-200"></i>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-800" id="stat-burned">--</p>
+                    </div>
                 </div>
-                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50"><h3 class="font-bold text-slate-700 text-sm">Recent Transmissions</h3></div>
-                    <div class="overflow-x-auto"><table class="w-full text-left text-sm"><tbody id="table-secrets" class="divide-y divide-slate-100 text-slate-600"></tbody></table></div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <h3 class="font-bold text-slate-700 text-sm">Recent Activity</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 font-medium">
+                                <tr>
+                                    <th class="px-6 py-3 w-32">Status</th>
+                                    <th class="px-6 py-3">ID</th>
+                                    <th class="px-6 py-3">Created</th>
+                                    <th class="px-6 py-3 text-center">Views</th>
+                                    <th class="px-6 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-secrets" class="divide-y divide-slate-100 text-slate-600">
+                                <!-- JS Injection -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State -->
+                    <div id="empty-state" class="hidden py-12 flex flex-col items-center justify-center text-center">
+                        <div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-3">
+                            <i class="fas fa-inbox text-xl"></i>
+                        </div>
+                        <p class="text-slate-500">No active secrets found.</p>
+                        <button onclick="navTo('create')" class="mt-4 text-brand-600 font-medium hover:underline text-sm">Create your first secret</button>
+                    </div>
                 </div>
             </div>
 
+            <!-- Page: Create -->
             <div id="page-create" class="page-view hidden flex-1 overflow-y-auto p-8">
-                <div class="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-8">
-                    <h2 class="text-lg font-bold text-slate-800 mb-6">Create New Secret</h2>
-                    <form id="form-create" class="space-y-6">
-                        <div class="grid grid-cols-2 gap-4">
-                            <label class="cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all" id="opt-text">
-                                <input type="radio" name="secret_type" value="text" class="hidden" checked onchange="updateTypeUI()">
-                                <i class="fas fa-file-text text-2xl text-brand-600"></i>
-                                <span class="font-bold text-brand-900 text-sm">Standard</span>
-                            </label>
-                            <label class="cursor-pointer border-2 border-slate-100 hover:bg-pink-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all" id="opt-love-letter">
-                                <input type="radio" name="secret_type" value="love-letter" class="hidden" onchange="updateTypeUI()">
-                                <i class="fas fa-heart text-2xl text-pink-500"></i>
-                                <span class="font-bold text-slate-700 text-sm">Love Letter</span>
-                            </label>
-                        </div>
-                        <textarea id="inp-content" rows="5" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg outline-none font-mono text-sm" placeholder="Secret Content..." required></textarea>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold mb-1">Max Views</label><input type="number" id="inp-views" value="1" min="1" class="w-full p-2 border rounded"></div>
-                            <div><label class="block text-xs font-bold mb-1">Timer (Sec)</label><input type="number" id="inp-ttl" value="0" min="0" class="w-full p-2 border rounded" placeholder="0 = Forever"></div>
-                        </div>
-                        <button type="submit" class="w-full py-3 bg-brand-600 text-white font-bold rounded-lg hover:bg-brand-700">Create Secret</button>
-                    </form>
+                <div class="max-w-3xl mx-auto bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+                    <div class="px-8 py-6 border-b border-slate-100">
+                        <h2 class="text-lg font-bold text-slate-800">New Secure Transmission</h2>
+                        <p class="text-slate-500 text-sm mt-1">Configure your encrypted message payload.</p>
+                    </div>
+                    
+                    <div class="p-8">
+                        <form id="form-create" class="space-y-6">
+                            <!-- Type (Standard vs Advanced) -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <label class="cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex items-center gap-3 transition-all" id="opt-std">
+                                    <input type="radio" name="secret_type" value="text" class="hidden" checked onchange="updateTypeUI()">
+                                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-brand-600 shadow-sm"><i class="fas fa-file-text"></i></div>
+                                    <div>
+                                        <p class="font-bold text-brand-900 text-sm">Standard Text</p>
+                                        <p class="text-xs text-brand-700/70">Simple encrypted message</p>
+                                    </div>
+                                    <i class="fas fa-check-circle text-brand-600 ml-auto text-xl"></i>
+                                </label>
+                                <label class="cursor-pointer border-2 border-slate-100 hover:border-slate-200 p-4 rounded-lg flex items-center gap-3 transition-all" id="opt-adv">
+                                    <input type="radio" name="secret_type" value="proposal" class="hidden" onchange="updateTypeUI()">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><i class="fas fa-gift"></i></div>
+                                    <div>
+                                        <p class="font-bold text-slate-700 text-sm">Rich Experience</p>
+                                        <p class="text-xs text-slate-400">Animated / Interactive</p>
+                                    </div>
+                                    <i class="fas fa-circle text-slate-200 ml-auto text-xl check-icon"></i>
+                                </label>
+                            </div>
+
+                            <!-- Content -->
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">Message Content</label>
+                                <textarea id="inp-content" rows="6" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition font-mono text-sm resize-none" placeholder="Enter sensitive data here..." required></textarea>
+                            </div>
+
+                            <!-- Settings Row -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Max Views</label>
+                                    <div class="relative">
+                                        <input type="number" id="inp-views" value="1" min="1" class="w-full p-2.5 pl-10 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition text-sm">
+                                        <i class="fas fa-eye absolute left-3 top-3 text-slate-400 text-xs"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Self-Destruct Timer (Seconds)</label>
+                                    <div class="relative">
+                                        <input type="number" id="inp-ttl" value="0" min="0" class="w-full p-2.5 pl-10 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition text-sm" placeholder="0 = Immediate burn">
+                                        <i class="fas fa-hourglass-start absolute left-3 top-3 text-slate-400 text-xs"></i>
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 mt-1 ml-1">Set to 0 to burn immediately after viewing limit.</p>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                                <button type="button" onclick="navTo('dashboard')" class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 transition">Cancel</button>
+                                <button type="submit" class="px-6 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-lg hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition transform active:scale-95 flex items-center gap-2">
+                                    <i class="fas fa-lock"></i> Encrypt & Create
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- LOGIN -->
-    <div id="login-app" class="hidden fixed inset-0 z-[80] bg-white flex items-center justify-center p-4">
-        <form id="form-login" class="w-full max-w-sm space-y-4 text-center">
-            <div class="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center text-white mx-auto mb-4"><i class="fas fa-fingerprint"></i></div>
-            <h1 class="text-xl font-bold">Admin Login</h1>
-            <input type="text" id="login-user" class="w-full p-3 border rounded" placeholder="Username" required>
-            <input type="password" id="login-pass" class="w-full p-3 border rounded" placeholder="Password" required>
-            <button type="submit" class="w-full py-3 bg-slate-900 text-white font-bold rounded">Sign In</button>
-            <p id="login-error" class="hidden text-red-500 text-xs">Invalid Credentials</p>
-        </form>
-    </div>
-
-    <!-- SUCCESS MODAL -->
-    <div id="modal-success" class="hidden fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center">
-            <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl"><i class="fas fa-check"></i></div>
-            <h3 class="font-bold text-slate-800 mb-4">Secret Created</h3>
-            <div class="flex gap-2 bg-slate-50 border p-2 rounded mb-4">
-                <input type="text" id="result-url" readonly class="bg-transparent flex-1 text-xs font-mono outline-none" onclick="this.select()">
-                <button onclick="copyResult()" class="text-brand-600"><i class="fas fa-copy"></i></button>
+    <!-- =========================
+         LOGIN APP
+         ========================= -->
+    <div id="login-app" class="hidden fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white">
+            <div class="text-center mb-10">
+                <div class="w-12 h-12 bg-brand-600 rounded-xl flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg shadow-brand-500/30">
+                    <i class="fas fa-fingerprint"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900">Admin Access</h1>
+                <p class="text-slate-500 text-sm mt-2">Please authenticate to continue.</p>
             </div>
-            <button onclick="location.reload()" class="w-full py-2 bg-slate-900 text-white font-bold rounded">Done</button>
+            
+            <form id="form-login" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Username</label>
+                    <input type="text" id="login-user" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition text-sm" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Password</label>
+                    <input type="password" id="login-pass" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition text-sm" required>
+                </div>
+                <button type="submit" class="w-full py-3 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition shadow-lg mt-2">
+                    Sign In
+                </button>
+            </form>
+            <p id="login-error" class="hidden mt-4 text-center text-xs font-medium text-red-500 bg-red-50 py-2 rounded">Invalid Credentials</p>
         </div>
     </div>
+
+    <!-- =========================
+         MODALS (Result / Logs)
+         ========================= -->
     
-    <script src="js/app.js"></script>
+    <!-- Success Modal -->
+    <div id="modal-success" class="hidden fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fas fa-check"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 mb-2">Secret Created</h3>
+            <p class="text-sm text-slate-500 mb-6">Your secure link is ready. It will expire based on your settings.</p>
+            
+            <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-lg mb-6">
+                <input type="text" id="result-url" readonly class="bg-transparent flex-1 text-xs font-mono text-slate-600 outline-none p-1" value="...">
+                <button onclick="copyResult()" class="p-2 bg-white border border-slate-200 rounded text-slate-500 hover:text-brand-600 hover:border-brand-200 transition">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('modal-success').classList.add('hidden'); navTo('dashboard')" class="flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 text-sm">Close</button>
+                <button onclick="document.getElementById('modal-success').classList.add('hidden'); navTo('create'); document.getElementById('form-create').reset()" class="flex-1 py-2.5 bg-brand-600 text-white font-bold rounded-lg hover:bg-brand-700 text-sm">Create Another</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Modal -->
+    <div id="modal-logs" class="hidden fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh]">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-bold text-slate-800">Access Logs</h3>
+                <button onclick="document.getElementById('modal-logs').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-500">
+                        <tr>
+                            <th class="px-5 py-3">Time</th>
+                            <th class="px-5 py-3">IP Address</th>
+                            <th class="px-5 py-3">Location</th>
+                            <th class="px-5 py-3">Device</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-body" class="divide-y divide-slate-100 text-slate-600 font-mono">
+                        <!-- Logs -->
+                    </tbody>
+                </table>
+                <div id="logs-loading" class="p-8 text-center text-slate-400 italic">Loading telemetry...</div>
+                <div id="logs-empty" class="hidden p-8 text-center text-slate-400">No access records found.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================
+         APPLICATION LOGIC
+         ========================= -->
+    <script>
+        // State
+        const API_BASE = '/api';
+        let authToken = localStorage.getItem('auth_token');
+        const urlParams = new URLSearchParams(window.location.search);
+        const secretId = urlParams.get('id');
+
+        // === INITIALIZATION ===
+        window.onload = async () => {
+            const loader = document.getElementById('app-loader');
+            
+            if (secretId) {
+                // Viewer Mode
+                await initViewer(secretId);
+                document.getElementById('view-app').classList.remove('hidden');
+            } else {
+                // Admin Mode
+                if (authToken) {
+                    await initDashboard();
+                    document.getElementById('admin-app').classList.remove('hidden');
+                } else {
+                    document.getElementById('login-app').classList.remove('hidden');
+                }
+            }
+            
+            // Hide Loader
+            setTimeout(() => {
+                loader.classList.add('opacity-0', 'pointer-events-none');
+            }, 500);
+        };
+
+        // === AUTHENTICATION ===
+        document.getElementById('form-login').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const err = document.getElementById('login-error');
+            const u = document.getElementById('login-user').value;
+            const p = document.getElementById('login-pass').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+            err.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                const data = await res.json();
+                
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                    window.location.reload();
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (error) {
+                btn.disabled = false;
+                btn.innerText = 'Sign In';
+                err.innerText = error.message;
+                err.classList.remove('hidden');
+            }
+        };
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            window.location.reload();
+        }
+
+        // === DASHBOARD LOGIC ===
+        async function initDashboard() {
+            try {
+                const res = await fetch(`${API_BASE}/dashboard`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                if (res.status === 401) return logout();
+                const data = await res.json();
+
+                // Set User Info
+                document.getElementById('user-name').innerText = data.username;
+                document.getElementById('user-initial').innerText = data.username.charAt(0).toUpperCase();
+
+                // Render Stats
+                document.getElementById('stat-active').innerText = data.stats.active_secrets;
+                document.getElementById('stat-burned').innerText = data.stats.burned_secrets;
+                document.getElementById('stat-views').innerText = data.stats.total_views;
+
+                await loadSecretsTable();
+
+            } catch (e) { console.error("Dashboard Init Error", e); }
+        }
+
+        async function loadSecretsTable() {
+            const tbody = document.getElementById('table-secrets');
+            const empty = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/secrets-list`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                const data = await res.json();
+
+                if (!data.secrets || data.secrets.length === 0) {
+                    empty.classList.remove('hidden');
+                    return;
+                }
+                empty.classList.add('hidden');
+
+                data.secrets.forEach(s => {
+                    const date = new Date(s.created_at * 1000).toLocaleDateString();
+                    const statusClass = s.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500';
+                    const statusText = s.is_active ? 'Active' : 'Burned';
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50/80 transition group border-b border-slate-50 last:border-0";
+                    
+                    tr.innerHTML = `
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                ${s.is_active ? '<span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>' : ''} ${statusText}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 font-mono text-xs text-slate-500">${s.id.substring(0, 12)}...</td>
+                        <td class="px-6 py-4 text-xs text-slate-500">${date}</td>
+                        <td class="px-6 py-4 text-center font-medium text-slate-700">${s.view_count} <span class="text-slate-400 font-normal">/ ${s.max_views}</span></td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="openLogs('${s.id}')" class="text-slate-400 hover:text-brand-600 transition mx-1" title="Logs"><i class="fas fa-list-ul"></i></button>
+                            <button onclick="copyLink('${s.id}')" class="text-slate-400 hover:text-slate-800 transition mx-1" title="Copy Link"><i class="fas fa-link"></i></button>
+                            ${s.is_active ? `<button onclick="deleteSecret('${s.id}')" class="text-slate-400 hover:text-red-500 transition mx-1" title="Burn"><i class="fas fa-trash"></i></button>` : ''}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) { console.error("Table Load Error", e); }
+        }
+
+        async function refreshData() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('fa-spin');
+            await initDashboard();
+            setTimeout(() => icon.classList.remove('fa-spin'), 600);
+        }
+
+        // === CREATE LOGIC ===
+        function updateTypeUI() {
+            const isStd = document.querySelector('input[value="text"]').checked;
+            const stdCard = document.getElementById('opt-std');
+            const advCard = document.getElementById('opt-adv');
+            
+            if(isStd) {
+                stdCard.className = "cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex items-center gap-3 transition-all";
+                stdCard.querySelector('.fa-check-circle').classList.remove('hidden');
+                advCard.className = "cursor-pointer border-2 border-slate-100 hover:border-slate-200 p-4 rounded-lg flex items-center gap-3 transition-all";
+                advCard.querySelector('.check-icon').classList.remove('fa-check-circle', 'text-brand-600');
+                advCard.querySelector('.check-icon').classList.add('fa-circle', 'text-slate-200');
+            } else {
+                advCard.className = "cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex items-center gap-3 transition-all";
+                advCard.querySelector('.check-icon').classList.remove('fa-circle', 'text-slate-200');
+                advCard.querySelector('.check-icon').classList.add('fa-check-circle', 'text-brand-600');
+                stdCard.className = "cursor-pointer border-2 border-slate-100 hover:border-slate-200 p-4 rounded-lg flex items-center gap-3 transition-all";
+                stdCard.querySelector('.fa-check-circle').classList.add('hidden');
+            }
+        }
+
+        document.getElementById('form-create').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            const payload = {
+                content: document.getElementById('inp-content').value,
+                type: document.querySelector('input[name="secret_type"]:checked').value,
+                max_views: parseInt(document.getElementById('inp-views').value),
+                expiry_seconds: parseInt(document.getElementById('inp-ttl').value),
+                metadata: {} // Extended features can go here
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/secret`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                // Show Success
+                document.getElementById('result-url').value = `${window.location.origin}?id=${data.id}`;
+                document.getElementById('modal-success').classList.remove('hidden');
+                
+            } catch (e) { alert("Creation Failed: " + e.message); }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-lock"></i> Encrypt & Create';
+        };
+
+        // === VIEWER LOGIC ===
+        async function initViewer(id) {
+            try {
+                const res = await fetch(`${API_BASE}/secret/${id}`);
+                const data = await res.json();
+                
+                if (res.status !== 200 || data.error) throw new Error(data.error || "Secret unavailable");
+
+                // Render
+                document.getElementById('view-id').innerText = id.substring(0, 16).toUpperCase();
+                document.getElementById('view-content').innerText = data.content;
+                
+                if (data.settings.expiry > 0) document.getElementById('view-warning').classList.remove('hidden');
+
+                // Animate In
+                const card = document.getElementById('secret-card');
+                card.classList.remove('opacity-0', 'translate-y-4');
+
+            } catch (e) {
+                document.getElementById('secret-card').classList.add('hidden');
+                document.getElementById('view-error').classList.remove('hidden');
+                document.getElementById('view-error-msg').innerText = e.message;
+            }
+        }
+
+        // === UTILS & NAVIGATION ===
+        function navTo(page) {
+            document.querySelectorAll('.page-view').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`page-${page}`).classList.remove('hidden');
+            
+            // Sidebar Active State
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('text-white', 'bg-slate-800');
+                el.classList.add('hover:bg-slate-800', 'hover:text-white');
+                if (el.dataset.target === page) {
+                    el.classList.add('text-white', 'bg-slate-800');
+                    el.classList.remove('hover:bg-slate-800', 'hover:text-white');
+                }
+            });
+            
+            document.getElementById('page-title').innerText = page === 'dashboard' ? 'Overview' : 'New Transmission';
+        }
+
+        function showToast(msg, type = 'success') {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = "bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl text-sm font-medium flex items-center gap-3 transform transition-all duration-300 translate-x-full opacity-0";
+            t.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle text-green-400' : 'fa-info-circle'}"></i> ${msg}`;
+            c.appendChild(t);
+            requestAnimationFrame(() => t.classList.remove('translate-x-full', 'opacity-0'));
+            setTimeout(() => {
+                t.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => t.remove(), 300);
+            }, 3000);
+        }
+
+        function copyLink(id) {
+            navigator.clipboard.writeText(`${window.location.origin}?id=${id}`);
+            showToast("Secure link copied to clipboard");
+        }
+
+        function copyResult() {
+            const input = document.getElementById('result-url');
+            input.select();
+            document.execCommand('copy');
+            showToast("Link copied!");
+        }
+
+        function copyContent() {
+            const text = document.getElementById('view-content').innerText;
+            navigator.clipboard.writeText(text);
+            showToast("Content copied to clipboard");
+        }
+
+        async function deleteSecret(id) {
+            if(!confirm("Are you sure? This action is irreversible.")) return;
+            await fetch(`${API_BASE}/secret/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken}` } });
+            refreshData();
+            showToast("Secret burned permanently");
+        }
+
+        // Logs Modal
+        async function openLogs(id) {
+            document.getElementById('modal-logs').classList.remove('hidden');
+            document.getElementById('logs-loading').classList.remove('hidden');
+            document.getElementById('logs-empty').classList.add('hidden');
+            document.getElementById('logs-body').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/secret/logs/${id}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                const data = await res.json();
+                document.getElementById('logs-loading').classList.add('hidden');
+                
+                if(!data.logs || data.logs.length === 0) {
+                    document.getElementById('logs-empty').classList.remove('hidden');
+                    return;
+                }
+
+                data.logs.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-5 py-3 text-slate-500 whitespace-nowrap">${new Date(log.viewed_at * 1000).toLocaleString()}</td>
+                        <td class="px-5 py-3 font-medium text-brand-600">${log.ip_address}</td>
+                        <td class="px-5 py-3 text-slate-700">${log.city || '-'}, ${log.country || '-'}</td>
+                        <td class="px-5 py-3 text-slate-500 text-[10px] truncate max-w-[150px]" title="${log.user_agent}">${log.device_type}</td>
+                    `;
+                    document.getElementById('logs-body').appendChild(tr);
+                });
+            } catch(e) { console.error(e); }
+        }
+    </script>
 </body>
 </html>
