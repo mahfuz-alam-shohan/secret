@@ -18,10 +18,8 @@
 </head>
 <body class="bg-slate-50 text-slate-900 h-screen flex flex-col overflow-hidden">
 
-    <div id="toast-container" class="fixed top-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none"></div>
-
     <!-- LOADER -->
-    <div id="app-loader" class="fixed inset-0 bg-white z-[90] flex items-center justify-center transition-opacity duration-500">
+    <div id="app-loader" class="fixed inset-0 bg-white z-[9000] flex items-center justify-center transition-opacity duration-500">
         <div class="loader-dots relative w-20 h-20">
             <div class="absolute top-[33px] w-[13px] h-[13px] rounded-full bg-brand-600"></div>
             <div class="absolute top-[33px] w-[13px] h-[13px] rounded-full bg-brand-600"></div>
@@ -31,7 +29,7 @@
     </div>
 
     <!-- =========================
-         VIEWER APP
+         VIEWER APP (CINEMATIC)
          ========================= -->
     <div id="view-app" class="hidden flex-1 h-full relative">
         
@@ -50,36 +48,30 @@
              </div>
         </div>
 
-        <!-- LOVE LETTER UI (CINEMATIC) -->
-        <div id="view-love" class="hidden w-full h-full relative overflow-hidden bg-[#2a1b15]">
-            <!-- Desk Background -->
-            <div class="desk-surface"></div>
-            <div class="desk-grain"></div>
+        <!-- LOVE LETTER UI (ROBUST) -->
+        <div id="view-love" class="hidden w-full h-full relative overflow-hidden">
+            <!-- Background Decorations (Non-Clickable) -->
+            <i class="fas fa-book desk-decor decor-book"></i>
+            <i class="fas fa-mug-hot desk-decor decor-cup"></i>
+            <i class="fas fa-glasses desk-decor decor-glasses"></i>
+            <i class="fas fa-pen-fancy desk-decor decor-pen"></i>
 
-            <!-- Props -->
-            <div class="scene-object book-stack"><i class="fas fa-book"></i></div>
-            <div class="scene-object coffee-cup"><i class="fas fa-mug-hot"></i></div>
-            <div class="scene-object pen"><i class="fas fa-pen-fancy"></i></div>
-
-            <!-- Envelope Stage -->
-            <div class="envelope-stage" id="love-stage">
-                <!-- Wrapper for click detection -->
-                <div class="envelope-wrapper" id="love-wrapper">
-                    <div class="envelope" id="love-envelope">
-                        <div class="envelope-flap"></div>
-                        <div class="paper-preview"></div> <!-- Visible paper edge -->
-                        <div class="envelope-pocket"></div>
-                        <div class="wax-seal"><i class="fas fa-heart"></i></div>
-                    </div>
+            <!-- Interactive Stage (Z-Index 10) -->
+            <div class="envelope-stage" id="envelope-stage">
+                <div class="envelope-body">
+                    <div class="flap"></div>
+                    <div class="pocket"></div>
+                    <div class="seal"><i class="fas fa-heart"></i></div>
                 </div>
-                <div class="absolute bottom-10 text-white/70 font-hand text-2xl animate-bounce pointer-events-none">
-                    Open Me
-                </div>
+                <div class="click-hint">CLICK TO OPEN</div>
             </div>
 
-            <!-- Reading Overlay -->
+            <!-- Reading Overlay (Z-Index 50) -->
             <div id="reading-overlay">
-                <!-- Reading Container -->
+                <!-- Navigation -->
+                <button class="nav-btn nav-prev" onclick="prevPage(event)"><i class="fas fa-chevron-left"></i></button>
+                <button class="nav-btn nav-next" onclick="nextPage(event)"><i class="fas fa-chevron-right"></i></button>
+
                 <div class="letter-sheet">
                     <!-- Timer -->
                     <div id="love-timer-container" class="absolute top-2 right-4 hidden z-50">
@@ -88,20 +80,9 @@
                             <span id="love-timer" class="font-mono font-bold text-red-600 text-xs">--:--</span>
                         </div>
                     </div>
-
+                    
                     <!-- Content -->
                     <div class="letter-content" id="book-content"></div>
-
-                    <!-- Footer -->
-                    <div class="absolute bottom-1 w-full text-center text-slate-400 font-hand text-sm opacity-60">
-                        Read Carefully
-                    </div>
-                </div>
-
-                <!-- Navigation Buttons (Outside Sheet) -->
-                <div class="absolute inset-0 flex items-center justify-between px-2 md:px-8 pointer-events-none">
-                    <button class="nav-btn nav-prev pointer-events-auto" onclick="prevPage()"><i class="fas fa-chevron-left"></i></button>
-                    <button class="nav-btn nav-next pointer-events-auto" onclick="nextPage()"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
