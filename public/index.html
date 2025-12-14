@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Secure Transmission Platform</title>
+    <title>Secure Transmission</title>
     
     <!-- Professional Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@600;700&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@400;500;600;700&family=Fredoka:wght@400;500&display=swap" rel="stylesheet">
     
     <!-- Icons & Utilities -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -30,7 +30,7 @@
                             50: '#f0f9ff',
                             100: '#e0f2fe',
                             500: '#0ea5e9',
-                            600: '#0284c7', // Primary Brand Color
+                            600: '#0284c7', 
                             700: '#0369a1',
                             900: '#0c4a6e',
                         },
@@ -38,17 +38,18 @@
                             850: '#1e293b', 
                             900: '#0f172a',
                         },
-                        // New Proposal Theme Colors
-                        pastel: {
-                            pink: '#fff0f5',
-                            darkPink: '#db2777',
-                            border: '#fbcfe8',
+                        rose: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            500: '#f43f5e',
+                            900: '#881337',
                         }
                     },
                     boxShadow: {
                         'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
                         'card': '0 0 0 1px rgba(0,0,0,0.03), 0 2px 8px rgba(0,0,0,0.04)',
-                        'book': '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06), 5px 0 15px -5px rgba(0,0,0,0.1)',
+                        'paper': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), inset 0 0 20px rgba(0,0,0,0.02)',
                     }
                 }
             }
@@ -56,18 +57,96 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
-        
-        /* Clean Transitions */
+        /* Global Reset for Swipe Control */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* Prevent body scroll */
+            overscroll-behavior: none; /* Block Pull-to-Refresh & Swipe Nav */
+            touch-action: pan-y; /* Allow vertical scroll, block horizontal for swipe logic */
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 3D Book Styles */
+        .book-stage {
+            perspective: 2500px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .book-container {
+            position: relative;
+            width: 90vw; /* Responsive Width */
+            max-width: 500px; /* Max Desktop Width */
+            height: 80vh; /* Responsive Height */
+            max-height: 700px; /* Max Desktop Height */
+            transform-style: preserve-3d;
+        }
+
+        .book-page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff; /* Paper Color */
+            background-image: 
+                linear-gradient(90deg, transparent 95%, rgba(0,0,0,0.02) 95%),
+                linear-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 100% 100%, 100% 2rem; /* Lined paper effect */
+            border-radius: 12px;
+            box-shadow: 
+                1px 1px 5px rgba(0,0,0,0.05), 
+                inset 20px 0 50px -10px rgba(0,0,0,0.05), /* Spine Shadow */
+                inset -2px 0 2px rgba(0,0,0,0.05); /* Edge Shadow */
+            transform-origin: left center; /* Pivot point for page turn */
+            transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1.000), opacity 0.4s ease; /* Smooth realistic curve */
+            z-index: 10;
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            backface-visibility: hidden; /* Hide back when flipped */
+        }
+
+        /* Page States */
+        .book-page.flipped {
+            transform: rotateY(-120deg);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .book-page.active {
+            transform: rotateY(0deg);
+            opacity: 1;
+            z-index: 20; /* Keep active on top */
+        }
+
+        .book-page.stacked {
+            transform: rotateY(0deg) scale(0.98) translateX(5px);
+            z-index: 5; /* Pages underneath */
+            opacity: 1;
+        }
+
+        /* Text Styling for Letter */
+        .handwritten {
+            font-family: 'Dancing Script', cursive;
+            line-height: 2rem; /* Match line background */
+            font-size: 1.5rem;
+            color: #334155;
+            text-align: left; /* Handwriting is usually left aligned */
+        }
+
+        /* Standard Utilities */
         .fade-enter { opacity: 0; transform: translateY(10px); }
         .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s ease, transform 0.3s ease; }
         
-        /* Custom Scrollbar for professional feel */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
         /* Loader */
         .loader-dots div { animation-timing-function: cubic-bezier(0, 1, 1, 0); }
         .loader-dots div:nth-child(1) { left: 8px; animation: loader-dots1 0.6s infinite; }
@@ -77,30 +156,14 @@
         @keyframes loader-dots1 { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         @keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
         @keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
-
-        /* Proposal Book Styles */
-        .book-page {
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
-            position: absolute;
-            inset: 0;
-            backface-visibility: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        .page-enter-next { transform: translateX(100%); opacity: 0; }
-        .page-enter-prev { transform: translateX(-100%); opacity: 0; }
-        .page-active { transform: translateX(0); opacity: 1; z-index: 10; }
-        .page-exit-next { transform: translateX(-100%); opacity: 0; z-index: 0; }
-        .page-exit-prev { transform: translateX(100%); opacity: 0; z-index: 0; }
-
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-50 text-slate-900">
 
-    <!-- === TOAST NOTIFICATIONS === -->
+    <!-- === TOAST === -->
     <div id="toast-container" class="fixed top-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none"></div>
 
-    <!-- === GLOBAL LOADER === -->
+    <!-- === LOADER === -->
     <div id="app-loader" class="fixed inset-0 bg-white z-[90] flex items-center justify-center transition-opacity duration-500">
         <div class="loader-dots relative w-20 h-20">
             <div class="absolute top-[33px] w-[13px] h-[13px] rounded-full bg-brand-600"></div>
@@ -111,33 +174,25 @@
     </div>
 
     <!-- =========================
-         VIEWER APP (Public Access)
+         VIEWER APP
          ========================= -->
-    <div id="view-app" class="hidden flex-1 flex flex-col h-full relative">
+    <div id="view-app" class="hidden absolute inset-0 w-full h-full">
         
-        <!-- Standard Theme View -->
-        <div id="view-standard" class="hidden absolute inset-0 flex flex-col items-center justify-center p-4 z-10">
-             <!-- Background Pattern -->
+        <!-- STANDARD THEME -->
+        <div id="view-standard" class="hidden w-full h-full flex items-center justify-center p-4 bg-slate-50 relative overflow-y-auto">
              <div class="absolute inset-0 z-0 opacity-[0.03]" style="background-image: radial-gradient(#64748b 1px, transparent 1px); background-size: 24px 24px;"></div>
-             
-             <!-- Standard Card -->
              <div id="secret-card" class="relative z-10 w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden transform transition-all duration-500 opacity-0 translate-y-4">
-                <!-- Header -->
                 <div class="bg-slate-50/50 px-8 py-6 border-b border-slate-100 flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-brand-50 flex items-center justify-center text-brand-600">
-                            <i class="fas fa-shield-halved text-lg"></i>
-                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-brand-50 flex items-center justify-center text-brand-600"><i class="fas fa-shield-halved text-lg"></i></div>
                         <div>
                             <h1 class="text-lg font-bold text-slate-800">Secure Transmission</h1>
                             <div class="flex items-center gap-2 text-xs text-slate-500">
-                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                                <span>End-to-End Encrypted</span>
+                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span><span>End-to-End Encrypted</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                <!-- Content -->
                 <div class="p-8">
                     <div id="view-warning" class="hidden mb-6 p-4 rounded-lg bg-amber-50 border border-amber-100 flex items-start gap-3">
                         <i class="fas fa-exclamation-triangle text-amber-500 mt-1"></i>
@@ -147,69 +202,50 @@
                         </div>
                     </div>
                     <div class="relative group">
-                        <div id="view-content" class="font-mono text-sm leading-relaxed text-slate-700 whitespace-pre-wrap bg-slate-50 p-6 rounded-lg border border-slate-100 min-h-[120px] select-text"></div>
-                        <button onclick="copyContent('view-content')" class="absolute top-2 right-2 p-2 bg-white rounded shadow-sm border border-slate-200 text-slate-400 hover:text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Copy Text">
-                            <i class="fas fa-copy"></i>
-                        </button>
+                        <div id="view-content" class="font-mono text-sm leading-relaxed text-slate-700 whitespace-pre-wrap bg-slate-50 p-6 rounded-lg border border-slate-100 min-h-[120px]"></div>
+                        <button onclick="copyContent('view-content')" class="absolute top-2 right-2 p-2 bg-white rounded shadow-sm border border-slate-200 text-slate-400 hover:text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
              </div>
         </div>
 
-        <!-- Proposal Theme View -->
-        <div id="view-proposal" class="hidden absolute inset-0 bg-pastel-pink flex flex-col items-center justify-center p-4 z-20 overflow-hidden">
-            <!-- Decorative Elements -->
-            <div class="absolute top-0 left-0 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-            <div class="absolute top-0 right-0 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-            <div class="absolute -bottom-8 left-20 w-64 h-64 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+        <!-- PROPOSAL / LETTER THEME (Updated) -->
+        <div id="view-proposal" class="hidden absolute inset-0 w-full h-full bg-rose-50 overflow-hidden z-20">
+            <!-- Background Decoration -->
+            <div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-pink-200/40 rounded-full blur-[100px] pointer-events-none"></div>
+            <div class="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-rose-200/40 rounded-full blur-[100px] pointer-events-none"></div>
 
-            <div class="relative z-10 w-full max-w-md md:max-w-lg">
-                <div class="bg-white rounded-3xl shadow-book p-2 border-2 border-white/50 relative">
-                    <!-- Book Spiral/Binding Effect (Visual) -->
-                    <div class="absolute left-4 top-0 bottom-0 w-8 border-r-2 border-dashed border-slate-200 z-20"></div>
+            <!-- The Stage -->
+            <div class="book-stage" id="book-stage">
+                <div class="book-container" id="book-container">
+                    <!-- Pages Injected Here -->
+                </div>
+            </div>
 
-                    <!-- Book Container -->
-                    <div class="bg-white rounded-2xl h-[60vh] md:h-[500px] overflow-hidden relative pl-10 pr-6 py-8" id="proposal-book">
-                        <!-- Pages will be injected here -->
-                    </div>
-
-                    <!-- Navigation -->
-                    <div class="absolute -bottom-16 left-0 right-0 flex justify-center gap-6 items-center">
-                        <button onclick="prevPage()" class="w-12 h-12 rounded-full bg-white shadow-lg text-pastel-darkPink hover:scale-110 transition flex items-center justify-center">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <span id="page-indicator" class="font-cartoon text-pastel-darkPink font-bold text-lg">1 / 1</span>
-                        <button onclick="nextPage()" class="w-12 h-12 rounded-full bg-white shadow-lg text-pastel-darkPink hover:scale-110 transition flex items-center justify-center">
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
+            <!-- Controls (Visual Indicator) -->
+            <div class="absolute bottom-6 inset-x-0 flex justify-center items-center gap-8 pointer-events-none">
+                <div class="bg-white/80 backdrop-blur px-6 py-2 rounded-full shadow-sm text-rose-500 font-bold font-cartoon flex items-center gap-2">
+                    <i class="fas fa-hand-pointer animate-pulse"></i>
+                    <span id="page-counter">Swipe to Turn</span>
                 </div>
             </div>
         </div>
 
-        <!-- Reply / Error / Burned State -->
+        <!-- REPLIED / BURNED / ERROR STATE -->
         <div id="view-action-state" class="hidden absolute inset-0 z-50 bg-white flex items-center justify-center p-4">
             <div class="w-full max-w-md text-center">
-                
-                <!-- Icon Area -->
-                <div id="state-icon-container" class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
                     <i id="state-icon" class="fas fa-ban text-slate-400"></i>
                 </div>
-                
                 <h2 id="state-title" class="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
                 <p id="state-msg" class="text-slate-500 mb-8">This message is no longer available.</p>
-
-                <!-- Reply Form -->
                 <div id="reply-container" class="hidden text-left bg-white p-6 rounded-xl border border-slate-200 shadow-soft">
                     <label class="block text-sm font-bold text-slate-700 mb-2">Send a Reply</label>
-                    <p class="text-xs text-slate-400 mb-4">You can send one message back to the sender. This option will disappear after sending.</p>
+                    <p class="text-xs text-slate-400 mb-4">You can send one message back. This option will disappear after sending.</p>
                     <textarea id="reply-content" rows="4" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition text-sm resize-none mb-4" placeholder="Write your response..."></textarea>
-                    <button onclick="sendReply()" id="btn-reply" class="w-full py-3 bg-brand-600 text-white font-bold rounded-lg hover:bg-brand-700 transition shadow-lg">
-                        Send Message
-                    </button>
+                    <button onclick="sendReply()" id="btn-reply" class="w-full py-3 bg-brand-600 text-white font-bold rounded-lg hover:bg-brand-700 transition shadow-lg">Send Message</button>
                 </div>
-
-                <div id="state-actions" class="mt-8">
+                <div class="mt-8">
                     <a href="/" class="text-brand-600 font-medium hover:underline">Create your own secret</a>
                 </div>
             </div>
@@ -217,171 +253,79 @@
     </div>
 
     <!-- =========================
-         ADMIN DASHBOARD APP
+         ADMIN APP
          ========================= -->
-    <div id="admin-app" class="hidden flex h-full bg-white">
+    <div id="admin-app" class="hidden flex h-screen bg-white overflow-hidden">
         <!-- Sidebar -->
-        <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 flex-shrink-0 transition-all duration-300" id="sidebar">
+        <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 flex-shrink-0">
             <div class="h-16 flex items-center px-6 border-b border-slate-800">
                 <div class="flex items-center gap-2 text-white font-bold tracking-tight">
-                    <div class="w-6 h-6 rounded bg-brand-500 flex items-center justify-center text-xs">
-                        <i class="fas fa-lock"></i>
-                    </div>
+                    <div class="w-6 h-6 rounded bg-brand-500 flex items-center justify-center text-xs"><i class="fas fa-lock"></i></div>
                     <span>Secure<span class="text-brand-500">Ops</span></span>
                 </div>
             </div>
-
             <nav class="flex-1 p-4 space-y-1">
-                <p class="px-2 text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2 mt-2">Platform</p>
-                <button onclick="navTo('dashboard')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors text-white bg-slate-800" data-target="dashboard">
-                    <i class="fas fa-grid-2 text-brand-500 w-5 text-center"></i>
-                    <span class="text-sm font-medium">Overview</span>
-                </button>
-                <button onclick="navTo('create')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 hover:bg-slate-800 hover:text-white transition-colors" data-target="create">
-                    <i class="fas fa-plus-circle text-brand-500 w-5 text-center"></i>
-                    <span class="text-sm font-medium">New Transmission</span>
-                </button>
+                <button onclick="navTo('dashboard')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 text-white bg-slate-800" data-target="dashboard"><i class="fas fa-grid-2 text-brand-500 w-5 text-center"></i> Overview</button>
+                <button onclick="navTo('create')" class="nav-item w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 hover:bg-slate-800 hover:text-white" data-target="create"><i class="fas fa-plus-circle text-brand-500 w-5 text-center"></i> New Transmission</button>
             </nav>
-
-            <div class="p-4 border-t border-slate-800">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-lg">
-                        <span id="user-initial">A</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p id="user-name" class="text-sm font-medium text-white truncate">Admin</p>
-                        <button onclick="logout()" class="text-xs text-slate-500 hover:text-white">Log Out</button>
-                    </div>
-                </div>
+            <div class="p-4 border-t border-slate-800 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs"><span id="user-initial">A</span></div>
+                <div class="flex-1 min-w-0"><p id="user-name" class="text-sm font-medium text-white truncate">Admin</p><button onclick="logout()" class="text-xs text-slate-500 hover:text-white">Log Out</button></div>
             </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
-            <!-- Header -->
-            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
+        <!-- Main -->
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 h-full overflow-hidden">
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0">
                 <h2 id="page-title" class="text-lg font-bold text-slate-800">Overview</h2>
-                <button onclick="refreshData()" class="text-slate-400 hover:text-brand-600 transition p-2"><i class="fas fa-rotate" id="refresh-icon"></i></button>
+                <button onclick="refreshData()" class="text-slate-400 hover:text-brand-600"><i class="fas fa-rotate" id="refresh-icon"></i></button>
             </header>
-
-            <!-- Dashboard -->
             <div id="page-dashboard" class="page-view flex-1 overflow-y-auto p-8">
-                <!-- Metrics -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-medium text-slate-500">Active Secrets</h3>
-                            <span class="bg-green-50 text-green-600 text-xs px-2 py-1 rounded-full font-bold">+Live</span>
-                        </div>
-                        <p class="text-3xl font-bold text-slate-800" id="stat-active">--</p>
-                    </div>
-                    <!-- Other stats omitted for brevity, logic remains -->
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft">
-                         <div class="flex items-center justify-between mb-4">
-                             <h3 class="text-sm font-medium text-slate-500">Total Views</h3>
-                             <i class="fas fa-eye text-brand-200"></i>
-                         </div>
-                         <p class="text-3xl font-bold text-slate-800" id="stat-views">--</p>
-                     </div>
-                     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft">
-                         <div class="flex items-center justify-between mb-4">
-                             <h3 class="text-sm font-medium text-slate-500">Burned</h3>
-                             <i class="fas fa-fire text-orange-200"></i>
-                         </div>
-                         <p class="text-3xl font-bold text-slate-800" id="stat-burned">--</p>
-                     </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft"><p class="text-sm text-slate-500 mb-1">Active</p><p class="text-3xl font-bold text-slate-800" id="stat-active">--</p></div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft"><p class="text-sm text-slate-500 mb-1">Views</p><p class="text-3xl font-bold text-slate-800" id="stat-views">--</p></div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-soft"><p class="text-sm text-slate-500 mb-1">Burned</p><p class="text-3xl font-bold text-slate-800" id="stat-burned">--</p></div>
                 </div>
-
-                <!-- Table -->
                 <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-100"><h3 class="font-bold text-slate-700 text-sm">Transmissions</h3></div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-50 text-slate-500 font-medium">
-                                <tr>
-                                    <th class="px-6 py-3">Status</th>
-                                    <th class="px-6 py-3">ID</th>
-                                    <th class="px-6 py-3">Type</th>
-                                    <th class="px-6 py-3 text-center">Reply?</th>
-                                    <th class="px-6 py-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-secrets" class="divide-y divide-slate-100 text-slate-600"></tbody>
-                        </table>
-                    </div>
+                    <table class="w-full text-left text-sm"><tbody id="table-secrets" class="divide-y divide-slate-100"></tbody></table>
                     <div id="empty-state" class="hidden py-12 text-center text-slate-500">No secrets found.</div>
                 </div>
             </div>
-
-            <!-- Create Page -->
             <div id="page-create" class="page-view hidden flex-1 overflow-y-auto p-8">
-                <div class="max-w-3xl mx-auto bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-                    <div class="px-8 py-6 border-b border-slate-100">
-                        <h2 class="text-lg font-bold text-slate-800">New Transmission</h2>
-                    </div>
-                    <div class="p-8">
-                        <form id="form-create" class="space-y-6">
-                            <!-- Type Selection -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <label class="cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex items-center gap-3 transition-all" id="opt-std">
-                                    <input type="radio" name="secret_type" value="text" class="hidden" checked onchange="updateTypeUI()">
-                                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-brand-600 shadow-sm"><i class="fas fa-file-text"></i></div>
-                                    <div>
-                                        <p class="font-bold text-brand-900 text-sm">Standard Text</p>
-                                        <p class="text-xs text-brand-700/70">Simple encrypted message</p>
-                                    </div>
-                                    <i class="fas fa-check-circle text-brand-600 ml-auto text-xl"></i>
-                                </label>
-                                <label class="cursor-pointer border-2 border-slate-100 hover:border-slate-200 p-4 rounded-lg flex items-center gap-3 transition-all" id="opt-proposal">
-                                    <input type="radio" name="secret_type" value="proposal" class="hidden" onchange="updateTypeUI()">
-                                    <div class="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center text-pink-500"><i class="fas fa-heart"></i></div>
-                                    <div>
-                                        <p class="font-bold text-pink-900 text-sm">Proposal</p>
-                                        <p class="text-xs text-pink-700/70">Animated Book Style</p>
-                                    </div>
-                                    <i class="fas fa-circle text-slate-200 ml-auto text-xl check-icon"></i>
-                                </label>
-                            </div>
-
-                            <!-- Content -->
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Content</label>
-                                <textarea id="inp-content" rows="6" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none transition font-mono text-sm resize-none" placeholder="Enter content..." required></textarea>
-                            </div>
-
-                            <!-- Settings -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">Max Views</label>
-                                    <input type="number" id="inp-views" value="1" min="1" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">Timer (Seconds)</label>
-                                    <input type="number" id="inp-ttl" value="0" min="0" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm" placeholder="0 = No timer">
-                                </div>
-                            </div>
-
-                            <!-- Reply Option -->
-                            <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                                <input type="checkbox" id="inp-reply" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
-                                <div>
-                                    <label for="inp-reply" class="block text-sm font-bold text-slate-700">Allow Reply</label>
-                                    <p class="text-xs text-slate-500">Viewer can send one message back after the secret is destroyed.</p>
-                                </div>
-                            </div>
-
-                            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                                <button type="button" onclick="navTo('dashboard')" class="px-5 py-2.5 text-sm font-medium text-slate-600">Cancel</button>
-                                <button type="submit" class="px-6 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-lg hover:bg-brand-700 shadow-lg">Create</button>
-                            </div>
-                        </form>
-                    </div>
+                <div class="max-w-3xl mx-auto bg-white rounded-xl border border-slate-200 shadow-card p-8">
+                    <form id="form-create" class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex items-center gap-3 transition-all" id="opt-std">
+                                <input type="radio" name="secret_type" value="text" class="hidden" checked onchange="updateTypeUI()">
+                                <i class="fas fa-file-text text-brand-600 text-xl"></i>
+                                <div><p class="font-bold text-brand-900 text-sm">Standard</p><p class="text-xs text-brand-700/70">Text Message</p></div>
+                            </label>
+                            <label class="cursor-pointer border-2 border-slate-100 p-4 rounded-lg flex items-center gap-3 transition-all" id="opt-proposal">
+                                <input type="radio" name="secret_type" value="proposal" class="hidden" onchange="updateTypeUI()">
+                                <i class="fas fa-heart text-pink-500 text-xl"></i>
+                                <div><p class="font-bold text-pink-900 text-sm">Proposal</p><p class="text-xs text-pink-700/70">Love Letter</p></div>
+                            </label>
+                        </div>
+                        <textarea id="inp-content" rows="6" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Content..." required></textarea>
+                        <div class="grid grid-cols-2 gap-6">
+                            <input type="number" id="inp-views" value="1" min="1" class="w-full p-3 border rounded-lg text-sm" placeholder="Views">
+                            <input type="number" id="inp-ttl" value="0" min="0" class="w-full p-3 border rounded-lg text-sm" placeholder="Seconds (0=None)">
+                        </div>
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border">
+                            <input type="checkbox" id="inp-reply" class="w-4 h-4 text-brand-600">
+                            <label for="inp-reply" class="text-sm font-bold text-slate-700">Allow One Reply</label>
+                        </div>
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" onclick="navTo('dashboard')" class="px-5 py-2.5 text-sm text-slate-600">Cancel</button>
+                            <button type="submit" class="px-6 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-lg">Create</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Login Modal -->
+    <!-- Modals -->
     <div id="login-app" class="hidden fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
         <form id="form-login" class="w-full max-w-sm space-y-4">
             <h1 class="text-2xl font-bold text-center">Admin Access</h1>
@@ -391,343 +335,295 @@
             <p id="login-error" class="hidden text-center text-red-500 text-xs">Invalid Credentials</p>
         </form>
     </div>
-
-    <!-- Success Modal -->
     <div id="modal-success" class="hidden fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center">
             <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-check"></i></div>
             <h3 class="text-lg font-bold text-slate-800 mb-2">Created</h3>
-            <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-lg mb-6">
-                <input type="text" id="result-url" readonly class="bg-transparent flex-1 text-xs font-mono text-slate-600 outline-none p-1">
-                <button onclick="copyResult()" class="p-2 text-slate-500 hover:text-brand-600"><i class="fas fa-copy"></i></button>
-            </div>
+            <div class="bg-slate-50 border p-2 rounded-lg mb-6 flex"><input type="text" id="result-url" readonly class="bg-transparent flex-1 text-xs font-mono outline-none"><button onclick="copyResult()" class="ml-2"><i class="fas fa-copy"></i></button></div>
             <button onclick="document.getElementById('modal-success').classList.add('hidden'); navTo('dashboard')" class="w-full py-2.5 bg-brand-600 text-white font-bold rounded-lg">Done</button>
         </div>
     </div>
-
-    <!-- Reply Read Modal -->
     <div id="modal-reply" class="hidden fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-slate-800">Incoming Reply</h3>
-                <button onclick="document.getElementById('modal-reply').classList.add('hidden')" class="text-slate-400"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 text-slate-700 text-sm font-mono whitespace-pre-wrap" id="reply-text-display"></div>
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+            <button onclick="document.getElementById('modal-reply').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400"><i class="fas fa-times"></i></button>
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Incoming Reply</h3>
+            <div class="bg-slate-50 p-4 rounded-lg border text-slate-700 text-sm whitespace-pre-wrap" id="reply-text-display"></div>
         </div>
     </div>
 
+    <!-- LOGIC -->
     <script>
-        // === CORE LOGIC ===
         const API_BASE = '/api';
         let authToken = localStorage.getItem('auth_token');
         const urlParams = new URLSearchParams(window.location.search);
         const secretId = urlParams.get('id');
+        let currentSecretId = null;
+        
+        // Viewer State
+        let proposalPages = [];
+        let currentPageIndex = 0;
+        let touchStartX = 0;
+        let isAnimating = false;
 
-        // Initial Load
         window.onload = async () => {
-            const loader = document.getElementById('app-loader');
             if (secretId) {
                 await initViewer(secretId);
                 document.getElementById('view-app').classList.remove('hidden');
+            } else if (authToken) {
+                await initDashboard();
+                document.getElementById('admin-app').classList.remove('hidden');
             } else {
-                if (authToken) {
-                    await initDashboard();
-                    document.getElementById('admin-app').classList.remove('hidden');
-                } else {
-                    document.getElementById('login-app').classList.remove('hidden');
-                }
+                document.getElementById('login-app').classList.remove('hidden');
             }
-            setTimeout(() => loader.classList.add('opacity-0', 'pointer-events-none'), 500);
+            setTimeout(() => document.getElementById('app-loader').classList.add('opacity-0', 'pointer-events-none'), 500);
         };
 
-        // === AUTH ===
+        // --- AUTH & ADMIN ---
         document.getElementById('form-login').onsubmit = async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');
-            const err = document.getElementById('login-error');
             const u = document.getElementById('login-user').value;
             const p = document.getElementById('login-pass').value;
-            
             try {
                 btn.disabled = true;
-                const res = await fetch(`${API_BASE}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, password: p })
-                });
+                const res = await fetch(`${API_BASE}/login`, { method: 'POST', body: JSON.stringify({username: u, password: p}), headers: {'Content-Type': 'application/json'} });
                 const data = await res.json();
-                if (data.token) {
-                    localStorage.setItem('auth_token', data.token);
-                    window.location.reload();
-                } else throw new Error('Failed');
-            } catch (e) {
-                btn.disabled = false;
-                err.classList.remove('hidden');
-            }
+                if(data.token) { localStorage.setItem('auth_token', data.token); window.location.reload(); } else throw new Error();
+            } catch { btn.disabled = false; document.getElementById('login-error').classList.remove('hidden'); }
         };
-
         function logout() { localStorage.removeItem('auth_token'); window.location.reload(); }
-
-        // === DASHBOARD ===
+        
         async function initDashboard() {
             try {
                 const res = await fetch(`${API_BASE}/dashboard`, { headers: { 'Authorization': `Bearer ${authToken}` } });
-                if (res.status === 401) return logout();
+                if(res.status === 401) return logout();
                 const data = await res.json();
-                document.getElementById('user-name').innerText = data.username;
-                document.getElementById('user-initial').innerText = data.username.charAt(0).toUpperCase();
                 document.getElementById('stat-active').innerText = data.stats.active_secrets;
                 document.getElementById('stat-burned').innerText = data.stats.burned_secrets;
                 document.getElementById('stat-views').innerText = data.stats.total_views;
-                await loadSecretsTable();
-            } catch (e) { console.error(e); }
+                loadSecrets();
+            } catch(e){}
         }
 
-        async function loadSecretsTable() {
+        async function loadSecrets() {
             const tbody = document.getElementById('table-secrets');
-            const empty = document.getElementById('empty-state');
             tbody.innerHTML = '';
-            try {
-                const res = await fetch(`${API_BASE}/secrets-list`, { headers: { 'Authorization': `Bearer ${authToken}` } });
-                const data = await res.json();
-                if (!data.secrets?.length) { empty.classList.remove('hidden'); return; }
-                empty.classList.add('hidden');
-
-                data.secrets.forEach(s => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-50/80 transition group border-b border-slate-50";
-                    // Reply Indicator
-                    let replyHtml = '<span class="text-slate-300">-</span>';
-                    if (s.reply_content) {
-                        replyHtml = `<button onclick="viewReply('${encodeURIComponent(s.reply_content)}')" class="text-brand-600 hover:text-brand-800"><i class="fas fa-envelope"></i> Read</button>`;
-                    }
-
-                    tr.innerHTML = `
-                        <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full text-xs font-bold ${s.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">${s.is_active ? 'Active' : 'Burned'}</span></td>
-                        <td class="px-6 py-4 font-mono text-xs text-slate-500">${s.id.substring(0,8)}...</td>
-                        <td class="px-6 py-4 text-xs capitalize">${s.type === 'proposal' ? '<span class="text-pink-500 font-bold"><i class="fas fa-heart"></i> Proposal</span>' : 'Text'}</td>
-                        <td class="px-6 py-4 text-center text-xs">${replyHtml}</td>
-                        <td class="px-6 py-4 text-right">
-                            <button onclick="copyLink('${s.id}')" class="text-slate-400 hover:text-slate-800 mx-1"><i class="fas fa-link"></i></button>
-                            ${s.is_active ? `<button onclick="deleteSecret('${s.id}')" class="text-slate-400 hover:text-red-500 mx-1"><i class="fas fa-trash"></i></button>` : ''}
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch(e) {}
-        }
-
-        // === CREATE ===
-        function updateTypeUI() {
-            const isStd = document.querySelector('input[value="text"]').checked;
-            const stdCard = document.getElementById('opt-std');
-            const propCard = document.getElementById('opt-proposal');
-            
-            if(isStd) {
-                stdCard.className = stdCard.className.replace('border-slate-100', 'border-brand-600').replace('hover:border-slate-200', 'bg-brand-50');
-                stdCard.querySelector('.fa-check-circle').classList.remove('hidden');
-                propCard.className = "cursor-pointer border-2 border-slate-100 hover:border-slate-200 p-4 rounded-lg flex items-center gap-3 transition-all";
-                propCard.querySelector('.check-icon').className = "fas fa-circle text-slate-200 ml-auto text-xl check-icon";
-            } else {
-                propCard.className = "cursor-pointer border-2 border-pink-500 bg-pink-50 p-4 rounded-lg flex items-center gap-3 transition-all";
-                propCard.querySelector('.check-icon').className = "fas fa-check-circle text-pink-500 ml-auto text-xl check-icon";
-                stdCard.className = "cursor-pointer border-2 border-slate-100 hover:border-slate-200 p-4 rounded-lg flex items-center gap-3 transition-all";
-                stdCard.querySelector('.fa-check-circle').classList.add('hidden');
-            }
+            const res = await fetch(`${API_BASE}/secrets-list`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+            const data = await res.json();
+            if(!data.secrets?.length) { document.getElementById('empty-state').classList.remove('hidden'); return; }
+            document.getElementById('empty-state').classList.add('hidden');
+            data.secrets.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 border-b";
+                let replyBtn = s.reply_content ? `<button onclick="showReply('${encodeURIComponent(s.reply_content)}')" class="text-brand-600 hover:underline"><i class="fas fa-envelope"></i> Read</button>` : '<span class="text-slate-300">-</span>';
+                tr.innerHTML = `
+                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">${s.is_active ? 'Active' : 'Burned'}</span></td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">${s.id.substring(0,8)}...</td>
+                    <td class="px-6 py-4 text-xs">${s.type === 'proposal' ? '<span class="text-pink-500 font-bold">Proposal</span>' : 'Text'}</td>
+                    <td class="px-6 py-4">${replyBtn}</td>
+                    <td class="px-6 py-4 text-right"><button onclick="copyLink('${s.id}')" class="text-slate-400 hover:text-slate-800 mx-2"><i class="fas fa-link"></i></button>${s.is_active ? `<button onclick="delSecret('${s.id}')" class="text-slate-400 hover:text-red-500"><i class="fas fa-trash"></i></button>` : ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         document.getElementById('form-create').onsubmit = async (e) => {
             e.preventDefault();
-            const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true;
-            try {
-                const payload = {
-                    content: document.getElementById('inp-content').value,
-                    type: document.querySelector('input[name="secret_type"]:checked').value,
-                    max_views: parseInt(document.getElementById('inp-views').value),
-                    expiry_seconds: parseInt(document.getElementById('inp-ttl').value),
-                    allow_reply: document.getElementById('inp-reply').checked
-                };
-                const res = await fetch(`${API_BASE}/secret`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                document.getElementById('result-url').value = `${window.location.origin}?id=${data.id}`;
-                document.getElementById('modal-success').classList.remove('hidden');
-            } catch(e) { alert(e); }
-            btn.disabled = false;
+            const payload = {
+                content: document.getElementById('inp-content').value,
+                type: document.querySelector('input[name="secret_type"]:checked').value,
+                max_views: parseInt(document.getElementById('inp-views').value),
+                expiry_seconds: parseInt(document.getElementById('inp-ttl').value),
+                allow_reply: document.getElementById('inp-reply').checked
+            };
+            const res = await fetch(`${API_BASE}/secret`, { method: 'POST', headers: {'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+            const data = await res.json();
+            document.getElementById('result-url').value = `${window.location.origin}?id=${data.id}`;
+            document.getElementById('modal-success').classList.remove('hidden');
         };
 
-        // === VIEWER ===
-        let proposalPages = [];
-        let currentPage = 0;
-        let currentSecretId = null;
-
+        // --- VIEWER & PROPOSAL LOGIC ---
         async function initViewer(id) {
             currentSecretId = id;
             try {
                 const res = await fetch(`${API_BASE}/secret/${id}`);
                 const data = await res.json();
-
-                // 1. HANDLE BURNED / ERROR STATE
+                
+                // Burned/Error Handling
                 if (res.status === 410 || res.status === 404) {
                     document.getElementById('view-action-state').classList.remove('hidden');
-                    
                     if (data.can_reply) {
-                        // Show Reply Form
                         document.getElementById('state-icon').className = "fas fa-paper-plane text-brand-500";
                         document.getElementById('state-title').innerText = "Message Destroyed";
-                        document.getElementById('state-msg').innerText = "The content has been wiped. You may send one reply.";
+                        document.getElementById('state-msg').innerText = "The content is gone. You may send one reply.";
                         document.getElementById('reply-container').classList.remove('hidden');
-                    } else {
-                        // Standard Burned Message
-                        document.getElementById('state-icon').className = "fas fa-fire text-orange-500";
-                        document.getElementById('state-title').innerText = "Self-Destructed";
-                        document.getElementById('state-msg').innerText = "This transmission has expired.";
                     }
                     return;
                 }
 
-                if (data.error) throw new Error(data.error);
-
-                // 2. RENDER CONTENT
                 if (data.type === 'proposal') {
-                    renderProposal(data.content);
-                    if(data.settings.expiry > 0) setTimeout(() => location.reload(), data.settings.remaining_seconds * 1000);
+                    setupProposal(data.content);
                 } else {
                     document.getElementById('view-standard').classList.remove('hidden');
                     document.getElementById('view-content').innerText = data.content;
                     if(data.settings.expiry > 0) document.getElementById('view-warning').classList.remove('hidden');
                     setTimeout(() => document.getElementById('secret-card').classList.remove('opacity-0', 'translate-y-4'), 100);
                 }
-
             } catch (e) {
                 document.getElementById('view-action-state').classList.remove('hidden');
-                document.getElementById('state-msg').innerText = e.message;
+                document.getElementById('state-msg').innerText = e.message || "Error loading.";
             }
         }
 
-        // Proposal Logic (Pagination)
-        function renderProposal(text) {
-            document.getElementById('view-proposal').classList.remove('hidden');
-            const container = document.getElementById('proposal-book');
-            container.innerHTML = '';
+        function setupProposal(text) {
+            const container = document.getElementById('view-proposal');
+            container.classList.remove('hidden');
             
-            // Chunk text (Simple split by paragraphs or length approx)
-            const charsPerPage = 350; // Estimate for font size
+            // Smart Splitting for Pages (approx 450 chars per page to fit strictly)
             const words = text.split(' ');
             let pages = [];
             let current = "";
-
+            const LIMIT = 450; 
+            
             words.forEach(word => {
-                if ((current + word).length > charsPerPage) {
-                    pages.push(current);
-                    current = word + " ";
-                } else {
-                    current += word + " ";
-                }
+                if((current + word).length > LIMIT) { pages.push(current); current = word + " "; }
+                else { current += word + " "; }
             });
             if(current) pages.push(current);
             proposalPages = pages;
+            currentPageIndex = 0;
 
-            // Generate DOM
-            pages.forEach((pageContent, idx) => {
-                const div = document.createElement('div');
-                div.className = `book-page w-full h-full p-6 flex flex-col items-center justify-center text-center ${idx === 0 ? 'page-active' : 'page-enter-next'}`;
-                div.id = `page-${idx}`;
-                div.innerHTML = `
-                    <div class="font-hand text-2xl md:text-3xl text-slate-700 leading-loose">${pageContent}</div>
-                    ${idx === pages.length - 1 ? '<div class="mt-8 text-pink-500 text-4xl animate-bounce"><i class="fas fa-heart"></i></div>' : ''}
-                `;
-                container.appendChild(div);
-            });
-
-            updatePageControls();
+            renderBook();
+            attachSwipeListeners();
         }
 
-        function updatePageControls() {
-            document.getElementById('page-indicator').innerText = `${currentPage + 1} / ${proposalPages.length}`;
+        function renderBook() {
+            const stage = document.getElementById('book-container');
+            stage.innerHTML = '';
+            
+            // Create Pages in Reverse Order (Stack Logic)
+            // Z-Index: Page 0 (top) = 100, Page 1 = 99...
+            proposalPages.forEach((content, i) => {
+                const el = document.createElement('div');
+                el.className = `book-page ${i === 0 ? 'active' : 'stacked'}`;
+                el.style.zIndex = 100 - i;
+                el.id = `page-${i}`;
+                el.innerHTML = `
+                    <div class="handwritten w-full h-full overflow-y-auto pr-2 scrollbar-hide">
+                        ${content}
+                        ${i === proposalPages.length - 1 ? '<div class="mt-8 text-center text-rose-400 text-3xl"><i class="fas fa-heart"></i></div>' : ''}
+                    </div>
+                    <div class="absolute bottom-4 right-6 text-slate-300 font-mono text-xs">${i + 1} / ${proposalPages.length}</div>
+                `;
+                stage.appendChild(el);
+            });
+            updateCounter();
+        }
+
+        function updateCounter() {
+            document.getElementById('page-counter').innerText = `Page ${currentPageIndex + 1} of ${proposalPages.length}`;
+        }
+
+        // --- SWIPE LOGIC ---
+        function attachSwipeListeners() {
+            const zone = document.getElementById('book-stage');
+            
+            zone.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, {passive: false});
+
+            zone.addEventListener('touchmove', e => {
+                // Prevent browser native back/forward swipe
+                e.preventDefault();
+            }, {passive: false});
+
+            zone.addEventListener('touchend', e => {
+                const touchEndX = e.changedTouches[0].screenX;
+                handleGesture(touchStartX, touchEndX);
+            }, {passive: false});
+        }
+
+        function handleGesture(start, end) {
+            if (isAnimating) return;
+            const threshold = 50; // min distance
+            
+            if (start - end > threshold) {
+                // Swipe Left -> Next Page
+                nextPage();
+            } else if (end - start > threshold) {
+                // Swipe Right -> Prev Page
+                prevPage();
+            }
         }
 
         function nextPage() {
-            if (currentPage >= proposalPages.length - 1) return;
-            document.getElementById(`page-${currentPage}`).className = "book-page page-exit-next";
-            currentPage++;
-            document.getElementById(`page-${currentPage}`).className = "book-page page-active";
-            updatePageControls();
+            if (currentPageIndex >= proposalPages.length - 1) return;
+            isAnimating = true;
+            
+            const curPage = document.getElementById(`page-${currentPageIndex}`);
+            const nextPage = document.getElementById(`page-${currentPageIndex + 1}`);
+            
+            // Animate Current Page Flipped Left
+            curPage.classList.remove('active');
+            curPage.classList.add('flipped');
+
+            // Bring Next Page Up
+            nextPage.classList.remove('stacked');
+            nextPage.classList.add('active');
+
+            currentPageIndex++;
+            updateCounter();
+            setTimeout(() => isAnimating = false, 600);
         }
 
         function prevPage() {
-            if (currentPage <= 0) return;
-            document.getElementById(`page-${currentPage}`).className = "book-page page-exit-prev";
-            currentPage--;
-            document.getElementById(`page-${currentPage}`).className = "book-page page-active";
-            updatePageControls();
+            if (currentPageIndex <= 0) return;
+            isAnimating = true;
+            
+            currentPageIndex--;
+            
+            const prevPage = document.getElementById(`page-${currentPageIndex}`);
+            const curPage = document.getElementById(`page-${currentPageIndex + 1}`);
+
+            // Restore Previous Page
+            prevPage.classList.remove('flipped');
+            prevPage.classList.add('active');
+
+            // Push Current Page Down
+            curPage.classList.remove('active');
+            curPage.classList.add('stacked');
+            
+            updateCounter();
+            setTimeout(() => isAnimating = false, 600);
         }
 
-        // Reply Logic
+        // --- REPLY & UTILS ---
         async function sendReply() {
             const btn = document.getElementById('btn-reply');
             const txt = document.getElementById('reply-content').value;
             if(!txt.trim()) return;
-
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
+            btn.disabled = true; btn.innerText = 'Sending...';
             try {
-                const res = await fetch(`${API_BASE}/reply`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ secret_id: currentSecretId, content: txt })
-                });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error);
-
-                document.getElementById('reply-container').innerHTML = `
-                    <div class="text-center py-8">
-                        <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-check"></i></div>
-                        <p class="font-bold text-slate-800">Message Sent</p>
-                    </div>
-                `;
-            } catch(e) {
-                alert(e.message);
-                btn.disabled = false;
-                btn.innerHTML = 'Send Message';
-            }
+                const res = await fetch(`${API_BASE}/reply`, { method: 'POST', body: JSON.stringify({ secret_id: currentSecretId, content: txt }), headers: {'Content-Type': 'application/json'} });
+                const d = await res.json();
+                if(d.error) throw new Error(d.error);
+                document.getElementById('reply-container').innerHTML = `<div class="text-center py-4 text-green-600 font-bold"><i class="fas fa-check-circle"></i> Sent Successfully</div>`;
+            } catch(e) { alert(e.message); btn.disabled = false; btn.innerText = 'Send Message'; }
         }
 
-        // Utils
-        function navTo(page) {
-            document.querySelectorAll('.page-view').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`page-${page}`).classList.remove('hidden');
-            document.getElementById('page-title').innerText = page === 'dashboard' ? 'Overview' : 'New Transmission';
+        function navTo(p){ document.querySelectorAll('.page-view').forEach(e=>e.classList.add('hidden')); document.getElementById(`page-${p}`).classList.remove('hidden'); }
+        function updateTypeUI(){ 
+            const isT = document.querySelector('input[value="text"]').checked;
+            const tEl = document.getElementById('opt-std'); const pEl = document.getElementById('opt-proposal');
+            if(isT) { tEl.classList.add('bg-brand-50','border-brand-600'); tEl.classList.remove('border-slate-100'); pEl.classList.remove('bg-pink-50','border-pink-500'); pEl.classList.add('border-slate-100'); }
+            else { pEl.classList.add('bg-pink-50','border-pink-500'); pEl.classList.remove('border-slate-100'); tEl.classList.remove('bg-brand-50','border-brand-600'); tEl.classList.add('border-slate-100'); }
         }
-        function copyResult() {
-            const input = document.getElementById('result-url');
-            input.select();
-            document.execCommand('copy');
-            alert("Copied!");
-        }
-        function copyLink(id) {
-            navigator.clipboard.writeText(`${window.location.origin}?id=${id}`);
-            alert("Link copied!");
-        }
-        function copyContent(id) {
-             navigator.clipboard.writeText(document.getElementById(id).innerText);
-             alert("Content Copied");
-        }
-        async function deleteSecret(id) {
-            if(!confirm("Burn this secret?")) return;
-            await fetch(`${API_BASE}/secret/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken}` } });
-            initDashboard();
-        }
-        function viewReply(content) {
-            document.getElementById('modal-reply').classList.remove('hidden');
-            document.getElementById('reply-text-display').innerText = decodeURIComponent(content);
-        }
-        async function refreshData() { await initDashboard(); }
+        function showReply(c) { document.getElementById('modal-reply').classList.remove('hidden'); document.getElementById('reply-text-display').innerText = decodeURIComponent(c); }
+        function copyResult(){ document.getElementById('result-url').select(); document.execCommand('copy'); alert('Copied'); }
+        function copyLink(id){ navigator.clipboard.writeText(`${window.location.origin}?id=${id}`); alert('Link Copied'); }
+        function copyContent(id){ navigator.clipboard.writeText(document.getElementById(id).innerText); alert('Text Copied'); }
+        async function delSecret(id){ if(confirm('Burn?')) await fetch(`${API_BASE}/secret/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken}` } }); refreshData(); }
+        async function refreshData(){ initDashboard(); }
     </script>
 </body>
 </html>
