@@ -26,10 +26,14 @@ async function initDB(env) {
     const queries = [
         `CREATE TABLE IF NOT EXISTS admins (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')));`,
         `CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')), FOREIGN KEY (user_id) REFERENCES admins(id) ON DELETE CASCADE);`,
-        `CREATE TABLE IF NOT EXISTS secrets (id TEXT PRIMARY KEY, type TEXT DEFAULT 'text', content TEXT, metadata TEXT DEFAULT '{}', max_views INTEGER DEFAULT 1, expiry_seconds INTEGER DEFAULT 0, view_count INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, burned_at INTEGER DEFAULT NULL, first_viewed_at INTEGER DEFAULT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')));`,
+        `CREATE TABLE IF NOT EXISTS secrets (id TEXT PRIMARY KEY, type TEXT DEFAULT 'text', content TEXT, metadata TEXT DEFAULT '{}', max_views INTEGER DEFAULT 1, expiry_seconds INTEGER DEFAULT 0, allow_reply INTEGER DEFAULT 0, view_count INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1, burned_at INTEGER DEFAULT NULL, first_viewed_at INTEGER DEFAULT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')));`,
+        `CREATE TABLE IF NOT EXISTS replies (id INTEGER PRIMARY KEY AUTOINCREMENT, secret_id TEXT NOT NULL, content TEXT NOT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')), FOREIGN KEY (secret_id) REFERENCES secrets(id) ON DELETE CASCADE);`,
         `CREATE TABLE IF NOT EXISTS access_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, secret_id TEXT NOT NULL, ip_address TEXT, country TEXT, city TEXT, user_agent TEXT, device_type TEXT, viewed_at INTEGER DEFAULT (strftime('%s', 'now')));`
     ];
     for (const q of queries) await safeQuery(env, q);
+
+    // Migration attempt for existing DBs (ignore error if column exists)
+    try { await safeQuery(env, "ALTER TABLE secrets ADD COLUMN allow_reply INTEGER DEFAULT 0;"); } catch(e) {}
 }
 
 const jsonResp = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
@@ -53,24 +57,38 @@ export default {
 
                 let secret = await safeSelect(env, "SELECT * FROM secrets WHERE id = ?", secretId);
 
-                if (!secret) return jsonResp({ error: "Message not found." }, 404);
+                // Check for Reply capability on missing/burned secrets
+                if (!secret || secret.is_active === 0) {
+                     // If it's burned/missing, but we need to check if we can reply
+                     // We need the record to exist to check allow_reply. If deleted completely, we can't.
+                     // But our logic soft-deletes via is_active=0.
+                     if (secret && secret.allow_reply === 1) {
+                        // Check if a reply already exists
+                        const existingReply = await safeSelect(env, "SELECT id FROM replies WHERE secret_id = ?", secretId);
+                        if (!existingReply) {
+                            return jsonResp({ error: "Burned", can_reply: true }, 410);
+                        }
+                     }
+                     return jsonResp({ error: "Message not found or burned." }, 410);
+                }
 
                 // Logging (Async)
                 ctx.waitUntil(safeQuery(env, "INSERT INTO access_logs (secret_id, ip_address, country, city, user_agent, device_type) VALUES (?, ?, ?, ?, ?, ?)", secretId, request.headers.get('CF-Connecting-IP') || 'Unknown', request.cf?.country || 'XX', request.cf?.city || 'Unknown', request.headers.get('User-Agent') || 'Unknown', 'Web'));
 
-                // Validation
-                if (secret.is_active === 0) return jsonResp({ error: "Message has been burned." }, 410);
-
                 // Time Check
                 let remaining = 0;
                 if (secret.expiry_seconds > 0) {
-                    // If first_viewed_at is NULL, we set it NOW effectively for the check, but update DB later
                     const firstView = secret.first_viewed_at || now;
                     const elapsed = now - firstView;
                     remaining = Math.max(0, secret.expiry_seconds - elapsed);
 
                     if (elapsed > secret.expiry_seconds) {
                         await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
+                        // Check reply logic immediately after burn
+                        if (secret.allow_reply === 1) {
+                            const reply = await safeSelect(env, "SELECT id FROM replies WHERE secret_id = ?", secretId);
+                            if (!reply) return jsonResp({ error: "Expired", can_reply: true }, 410);
+                        }
                         return jsonResp({ error: "Message expired." }, 410);
                     }
                 }
@@ -78,6 +96,11 @@ export default {
                 // View Count Check
                 if (secret.view_count >= secret.max_views) {
                     await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
+                     // Check reply logic immediately after burn
+                     if (secret.allow_reply === 1) {
+                        const reply = await safeSelect(env, "SELECT id FROM replies WHERE secret_id = ?", secretId);
+                        if (!reply) return jsonResp({ error: "Max views reached", can_reply: true }, 410);
+                    }
                     return jsonResp({ error: "Max views reached." }, 410);
                 }
 
@@ -88,6 +111,8 @@ export default {
                     await safeQuery(env, "UPDATE secrets SET view_count = view_count + 1 WHERE id = ?", secretId);
                 }
 
+                // Double check if this view killed it (max_views = 1, view_count becomes 1)
+                // We return content THIS time, but next time it will be burned.
                 if (secret.view_count + 1 > secret.max_views) {
                      await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
                 }
@@ -96,6 +121,7 @@ export default {
                     type: secret.type,
                     content: secret.content, 
                     metadata: JSON.parse(secret.metadata || '{}'),
+                    allow_reply: secret.allow_reply,
                     settings: { 
                         expiry: secret.expiry_seconds,
                         remaining_seconds: remaining 
@@ -103,7 +129,23 @@ export default {
                 });
             }
 
-            // 2. AUTH & SETUP
+            // 2. POST REPLY (Public)
+            if (path === '/api/reply' && method === 'POST') {
+                const { secret_id, content } = await request.json();
+                if(!secret_id || !content) return jsonResp({error: "Missing data"}, 400);
+
+                const secret = await safeSelect(env, "SELECT allow_reply FROM secrets WHERE id = ?", secret_id);
+                if (!secret) return jsonResp({ error: "Invalid ID" }, 404);
+                if (secret.allow_reply !== 1) return jsonResp({ error: "Replies not allowed" }, 403);
+
+                const existing = await safeSelect(env, "SELECT id FROM replies WHERE secret_id = ?", secret_id);
+                if (existing) return jsonResp({ error: "Reply already sent" }, 409);
+
+                await safeQuery(env, "INSERT INTO replies (secret_id, content) VALUES (?, ?)", secret_id, content);
+                return jsonResp({ success: true });
+            }
+
+            // 3. AUTH & SETUP
             if (path === '/api/setup' && method === 'POST') {
                 const c = await safeSelect(env, "SELECT COUNT(*) as count FROM admins");
                 if ((c?.count || 0) > 0) return jsonResp({ error: "Already setup." }, 403);
@@ -142,12 +184,19 @@ export default {
                 const body = await request.json();
                 const id = crypto.randomUUID();
                 const type = body.type || 'text';
-                await safeQuery(env, "INSERT INTO secrets (id, type, content, metadata, max_views, expiry_seconds) VALUES (?, ?, ?, ?, ?, ?)", id, type, body.content, '{}', body.max_views || 1, body.expiry_seconds || 0);
+                const allowReply = body.allow_reply ? 1 : 0;
+                await safeQuery(env, "INSERT INTO secrets (id, type, content, metadata, max_views, expiry_seconds, allow_reply) VALUES (?, ?, ?, ?, ?, ?, ?)", id, type, body.content, '{}', body.max_views || 1, body.expiry_seconds || 0, allowReply);
                 return jsonResp({ id }, 201);
             }
 
             if (path === '/api/secrets-list') {
-                const l = await safeSelectAll(env, "SELECT id, type, created_at, view_count, max_views, is_active FROM secrets ORDER BY created_at DESC LIMIT 50");
+                // Fetch secrets AND check if they have a reply
+                const l = await safeSelectAll(env, `
+                    SELECT s.id, s.type, s.created_at, s.view_count, s.max_views, s.is_active, r.content as reply_content 
+                    FROM secrets s 
+                    LEFT JOIN replies r ON s.id = r.secret_id 
+                    ORDER BY s.created_at DESC LIMIT 50
+                `);
                 return jsonResp({ secrets: l?.results || [] });
             }
 
@@ -155,6 +204,7 @@ export default {
                 const id = path.split('/').pop();
                 await safeQuery(env, "DELETE FROM secrets WHERE id = ?", id);
                 await safeQuery(env, "DELETE FROM access_logs WHERE secret_id = ?", id);
+                await safeQuery(env, "DELETE FROM replies WHERE secret_id = ?", id);
                 return jsonResp({ message: "Deleted" });
             }
             
