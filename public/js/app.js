@@ -1,5 +1,4 @@
 /* === APPLICATION LOGIC === */
-
 const API_BASE = '/api';
 let authToken = localStorage.getItem('auth_token');
 const urlParams = new URLSearchParams(window.location.search);
@@ -10,25 +9,27 @@ let currentPage = 0;
 
 // === INITIALIZATION ===
 window.onload = async () => {
-    if (secretId) {
-        // Viewer Mode
-        await initViewer(secretId);
-        document.getElementById('view-app').classList.remove('hidden');
-    } else if (authToken) {
-        // Dashboard Mode
-        await initDashboard();
-        document.getElementById('admin-app').classList.remove('hidden');
-    } else {
-        // Login Mode
-        document.getElementById('login-app').classList.remove('hidden');
+    try {
+        if (secretId) {
+            await initViewer(secretId);
+            document.getElementById('view-app').classList.remove('hidden');
+        } else if (authToken) {
+            await initDashboard();
+            document.getElementById('admin-app').classList.remove('hidden');
+        } else {
+            document.getElementById('login-app').classList.remove('hidden');
+        }
+    } catch(e) {
+        console.error("Init Error:", e);
+    } finally {
+        setTimeout(() => document.getElementById('app-loader').classList.add('opacity-0', 'pointer-events-none'), 500);
     }
-    // Fade out loader
-    setTimeout(() => document.getElementById('app-loader').classList.add('opacity-0', 'pointer-events-none'), 500);
 };
 
 // === AUTHENTICATION ===
-if (document.getElementById('form-login')) {
-    document.getElementById('form-login').onsubmit = async (e) => {
+const loginForm = document.getElementById('form-login');
+if (loginForm) {
+    loginForm.onsubmit = async (e) => {
         e.preventDefault();
         const u = document.getElementById('login-user').value;
         const p = document.getElementById('login-pass').value;
@@ -38,19 +39,14 @@ if (document.getElementById('form-login')) {
             if(data.token) { 
                 localStorage.setItem('auth_token', data.token); 
                 location.reload(); 
-            } else {
-                throw new Error();
-            }
+            } else throw new Error();
         } catch(e) { 
             document.getElementById('login-error').classList.remove('hidden'); 
         }
     };
 }
 
-function logout() { 
-    localStorage.removeItem('auth_token'); 
-    location.reload(); 
-}
+function logout() { localStorage.removeItem('auth_token'); location.reload(); }
 
 // === ADMIN DASHBOARD ===
 async function initDashboard() {
@@ -59,13 +55,11 @@ async function initDashboard() {
         if(res.status === 401) return logout();
         
         const data = await res.json();
-        const elActive = document.getElementById('stat-active');
-        const elViews = document.getElementById('stat-views');
-        const elBurned = document.getElementById('stat-burned');
-
-        if(elActive) elActive.innerText = data.stats.active_secrets;
-        if(elViews) elViews.innerText = data.stats.total_views;
-        if(elBurned) elBurned.innerText = data.stats.burned_secrets;
+        const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+        
+        safeSet('stat-active', data.stats.active_secrets);
+        safeSet('stat-views', data.stats.total_views);
+        safeSet('stat-burned', data.stats.burned_secrets);
         
         const lRes = await fetch(`${API_BASE}/secrets-list`, { headers: { 'Authorization': `Bearer ${authToken}` } });
         const list = await lRes.json();
@@ -84,7 +78,7 @@ async function initDashboard() {
                 </tr>`;
             });
         }
-    } catch(e) { console.error("Dashboard Error:", e); }
+    } catch(e) { console.error("Dash Error:", e); }
 }
 
 if (document.getElementById('form-create')) {
@@ -103,25 +97,32 @@ if (document.getElementById('form-create')) {
     };
 }
 
-function updateTypeUI() {
+// Function to handle global updates for the create form UI
+window.updateTypeUI = function() {
     const val = document.querySelector('input[name="secret_type"]:checked').value;
     const t = document.getElementById('opt-text');
     const l = document.getElementById('opt-love-letter');
-    if(val === 'text') {
-        t.className = "cursor-pointer border-2 border-brand-600 bg-brand-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-        l.className = "cursor-pointer border-2 border-slate-100 hover:bg-pink-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-    } else {
-        l.className = "cursor-pointer border-2 border-pink-500 bg-pink-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-        t.className = "cursor-pointer border-2 border-slate-100 hover:bg-brand-50 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all";
-    }
-}
+    if(!t || !l) return;
+    
+    const activeClass = "border-brand-600 bg-brand-50";
+    const inactiveClass = "border-slate-100 hover:bg-slate-50";
+    const loveActiveClass = "border-pink-500 bg-pink-50";
 
-async function deleteSecret(id) {
+    if(val === 'text') {
+        t.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${activeClass}`;
+        l.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${inactiveClass}`;
+    } else {
+        l.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${loveActiveClass}`;
+        t.className = `cursor-pointer border-2 p-4 rounded-lg flex flex-col items-center gap-2 text-center transition-all ${inactiveClass}`;
+    }
+};
+
+window.deleteSecret = async function(id) {
     if(confirm("Destroy?")) {
         await fetch(`${API_BASE}/secret/${id}`, { method:'DELETE', headers:{'Authorization':`Bearer ${authToken}`} });
         initDashboard();
     }
-}
+};
 
 // === VIEWER LOGIC ===
 async function initViewer(id) {
@@ -131,15 +132,24 @@ async function initViewer(id) {
         if(data.error) throw new Error(data.error);
 
         if (data.type === 'love-letter') {
-            document.getElementById('view-love').classList.remove('hidden');
+            const loveView = document.getElementById('view-love');
+            loveView.classList.remove('hidden');
+            
+            // Attach Click Listeners HERE to ensure they work
+            const wrapper = document.getElementById('love-wrapper');
+            if(wrapper) {
+                wrapper.addEventListener('click', openEnvelope);
+                wrapper.addEventListener('touchstart', (e) => { e.preventDefault(); openEnvelope(); });
+            }
+
             paginateContent(data.content);
             if(data.settings.remaining_seconds > 0) startTimer(data.settings.remaining_seconds, 'love-timer', 'love-timer-container');
         } else {
             document.getElementById('view-standard').classList.remove('hidden');
             document.getElementById('view-content-std').innerText = data.content;
             if(data.settings.remaining_seconds > 0) {
-                document.getElementById('std-warning').classList.remove('hidden');
-                document.getElementById('std-warning').style.display = 'flex';
+                const w = document.getElementById('std-warning');
+                w.classList.remove('hidden'); w.style.display = 'flex';
                 startTimer(data.settings.remaining_seconds, 'std-timer');
             }
         }
@@ -149,144 +159,115 @@ async function initViewer(id) {
     }
 }
 
-// === BOOKLET PAGINATION SYSTEM ===
-function paginateContent(text) {
-    const charsPerPage = 500; // Adjusted for handwriting font
-    pages = [];
-    let paragraphs = text.split('\n');
-    let currentPageText = "";
-    
-    paragraphs.forEach(para => {
-        if ((currentPageText.length + para.length) < charsPerPage) {
-            currentPageText += para + "\n\n";
-        } else {
-            if (currentPageText.length > 0) pages.push(currentPageText);
-            if (para.length > charsPerPage) {
-                let chunks = para.match(new RegExp('.{1,' + charsPerPage + '}', 'g'));
-                chunks.forEach((chunk, i) => {
-                        if (i < chunks.length - 1) pages.push(chunk);
-                        else currentPageText = chunk + "\n\n";
-                });
-            } else {
-                currentPageText = para + "\n\n";
-            }
-        }
-    });
-    if (currentPageText.length > 0) pages.push(currentPageText);
-    
-    // Render
-    const container = document.getElementById('book-content');
-    if (!container) return;
-
-    container.innerHTML = '';
-    
-    pages.forEach((pageContent, idx) => {
-        const pageDiv = document.createElement('div');
-        pageDiv.className = `page-slide ${idx === 0 ? 'active' : ''}`;
-        pageDiv.innerText = pageContent;
-        container.appendChild(pageDiv);
-    });
-
-    // Setup Nav
-    updateNavButtons();
-    setupSwipe(document.getElementById('letter-sheet'));
-}
-
+// === ENVELOPE INTERACTION ===
 function openEnvelope() {
     const env = document.getElementById('love-envelope');
     if(!env.classList.contains('open')) {
-        // 1. Open Envelope Animation
+        console.log("Opening Envelope...");
         env.classList.add('open');
         
-        // 2. Transition Scene
+        // Sequence: Open Flap -> Slide Paper Preview -> Zoom In
         setTimeout(() => {
-            // Zoom out desk
-            document.getElementById('love-stage').classList.add('zoomed-out');
-            
-            // Fade in Paper
-            document.getElementById('reading-overlay').classList.add('active');
+            const stage = document.getElementById('love-stage');
+            const overlay = document.getElementById('reading-overlay');
+            if(stage) stage.classList.add('zoomed-out');
+            if(overlay) overlay.classList.add('active');
         }, 800);
     }
 }
 
-function nextPage() {
-    if (currentPage < pages.length - 1) showPage(currentPage + 1);
+// === PAGINATION ===
+function paginateContent(text) {
+    const charsPerPage = 550; 
+    pages = [];
+    let paragraphs = text.split('\n');
+    let buffer = "";
+    
+    paragraphs.forEach(para => {
+        if ((buffer.length + para.length) < charsPerPage) {
+            buffer += para + "\n\n";
+        } else {
+            if (buffer.length > 0) pages.push(buffer);
+            buffer = para + "\n\n";
+        }
+    });
+    if (buffer.length > 0) pages.push(buffer);
+    if (pages.length === 0) pages.push(text); // Fallback
+
+    const container = document.getElementById('book-content');
+    if (container) {
+        container.innerHTML = '';
+        pages.forEach((txt, idx) => {
+            const d = document.createElement('div');
+            d.className = `page-slide ${idx === 0 ? 'active' : ''}`;
+            d.innerText = txt;
+            container.appendChild(d);
+        });
+    }
+    
+    // Check if we need nav buttons
+    if(pages.length <= 1) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.style.display = 'none');
+    } else {
+        updateNavButtons();
+    }
 }
 
-function prevPage() {
+window.nextPage = function() {
+    if (currentPage < pages.length - 1) showPage(currentPage + 1);
+};
+
+window.prevPage = function() {
     if (currentPage > 0) showPage(currentPage - 1);
-}
+};
 
 function showPage(index) {
-    const pageEls = document.querySelectorAll('.page-slide');
-    
-    if (index > currentPage) {
-        pageEls[currentPage].classList.add('prev');
-        pageEls[currentPage].classList.remove('active');
+    const els = document.querySelectorAll('.page-slide');
+    if(index > currentPage) {
+        els[currentPage].classList.add('prev');
+        els[currentPage].classList.remove('active');
     } else {
-        pageEls[currentPage].classList.remove('active');
-        // Reset transform for sliding back
-        pageEls[currentPage].classList.remove('prev');
+        els[currentPage].classList.remove('active');
+        els[currentPage].classList.remove('prev');
     }
-
     currentPage = index;
-    pageEls[currentPage].classList.remove('prev');
-    pageEls[currentPage].classList.add('active');
-
+    els[currentPage].classList.remove('prev');
+    els[currentPage].classList.add('active');
     updateNavButtons();
 }
 
 function updateNavButtons() {
     const prev = document.querySelector('.nav-prev');
     const next = document.querySelector('.nav-next');
-    if (prev) prev.classList.toggle('disabled', currentPage === 0);
-    if (next) next.classList.toggle('disabled', currentPage === pages.length - 1);
+    if(prev) prev.classList.toggle('disabled', currentPage === 0);
+    if(next) next.classList.toggle('disabled', currentPage === pages.length - 1);
 }
 
-function setupSwipe(element) {
-    let touchStartX = 0;
-    let touchEndX = 0;
-    if(!element) return;
-    element.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, false);
-    element.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
-        if (touchEndX < touchStartX - 50) nextPage();
-        if (touchEndX > touchStartX + 50) prevPage();
-    }, false);
-}
-
-// === UTILS ===
+// === TIMER & UTILS ===
 function startTimer(seconds, textId, containerId) {
-    const text = document.getElementById(textId);
-    if(containerId) {
-        const c = document.getElementById(containerId);
-        if(c) c.classList.remove('hidden');
-    }
-    let timeLeft = seconds;
-    text.innerText = formatTime(timeLeft);
-    
+    const el = document.getElementById(textId);
+    if(containerId) document.getElementById(containerId).classList.remove('hidden');
+    let t = seconds;
+    el.innerText = fmt(t);
     countdownInterval = setInterval(() => {
-        timeLeft--;
-        text.innerText = formatTime(timeLeft);
-        if (timeLeft <= 0) {
+        t--; el.innerText = fmt(t);
+        if(t <= 0) {
             clearInterval(countdownInterval);
-            document.body.innerHTML = ''; document.body.style.background='black';
+            document.body.innerHTML = ''; document.body.style.background = '#000';
             setTimeout(() => location.reload(), 100);
         }
     }, 1000);
 }
+function fmt(s) { const m=Math.floor(s/60); const sc=s%60; return `${m}:${sc.toString().padStart(2,'0')}`; }
 
-function formatTime(s) { const m=Math.floor(s/60); const sec=s%60; return `${m}:${sec.toString().padStart(2,'0')}`; }
+window.copyResult = function() { 
+    const e = document.getElementById('result-url');
+    e.select(); document.execCommand('copy'); alert('Copied!'); 
+};
 
-function copyResult() { 
-    const el = document.getElementById('result-url');
-    if(el) { el.select(); document.execCommand('copy'); alert('Copied!'); }
-}
+window.navTo = function(p) {
+    document.querySelectorAll('.page-view').forEach(x => x.classList.add('hidden'));
+    document.getElementById('page-'+p).classList.remove('hidden');
+};
 
-function navTo(p) { 
-    document.querySelectorAll('.page-view').forEach(x=>x.classList.add('hidden')); 
-    const target = document.getElementById('page-'+p);
-    if(target) target.classList.remove('hidden'); 
-}
-
-function refreshData() { initDashboard(); }
+window.refreshData = function() { initDashboard(); };
