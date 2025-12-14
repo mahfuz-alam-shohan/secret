@@ -151,7 +151,7 @@ async function initViewer(id) {
 
 // === BOOKLET PAGINATION SYSTEM ===
 function paginateContent(text) {
-    const charsPerPage = 600; // Configurable limit
+    const charsPerPage = 500; // Adjusted for handwriting font
     pages = [];
     let paragraphs = text.split('\n');
     let currentPageText = "";
@@ -162,7 +162,6 @@ function paginateContent(text) {
         } else {
             if (currentPageText.length > 0) pages.push(currentPageText);
             if (para.length > charsPerPage) {
-                // Split giant paragraphs
                 let chunks = para.match(new RegExp('.{1,' + charsPerPage + '}', 'g'));
                 chunks.forEach((chunk, i) => {
                         if (i < chunks.length - 1) pages.push(chunk);
@@ -177,42 +176,34 @@ function paginateContent(text) {
     
     // Render
     const container = document.getElementById('book-content');
-    const dots = document.getElementById('page-dots');
-    if (!container || !dots) return;
+    if (!container) return;
 
     container.innerHTML = '';
-    dots.innerHTML = '';
     
     pages.forEach((pageContent, idx) => {
         const pageDiv = document.createElement('div');
-        pageDiv.className = `book-page ${idx === 0 ? 'active' : ''}`;
+        pageDiv.className = `page-slide ${idx === 0 ? 'active' : ''}`;
         pageDiv.innerText = pageContent;
         container.appendChild(pageDiv);
-
-        const dot = document.createElement('div');
-        dot.className = `dot ${idx === 0 ? 'active' : ''}`;
-        dots.appendChild(dot);
     });
 
     // Setup Nav
-    if (pages.length <= 1) {
-        const prev = document.querySelector('.nav-prev');
-        const next = document.querySelector('.nav-next');
-        if (prev) prev.style.display = 'none';
-        if (next) next.style.display = 'none';
-    } else {
-        updateNavButtons();
-    }
-    
-    setupSwipe(container);
+    updateNavButtons();
+    setupSwipe(document.getElementById('letter-sheet'));
 }
 
 function openEnvelope() {
     const env = document.getElementById('love-envelope');
     if(!env.classList.contains('open')) {
+        // 1. Open Envelope Animation
         env.classList.add('open');
+        
+        // 2. Transition Scene
         setTimeout(() => {
-            document.getElementById('love-stage').classList.add('faded');
+            // Zoom out desk
+            document.getElementById('love-stage').classList.add('zoomed-out');
+            
+            // Fade in Paper
             document.getElementById('reading-overlay').classList.add('active');
         }, 800);
     }
@@ -227,24 +218,20 @@ function prevPage() {
 }
 
 function showPage(index) {
-    const pageEls = document.querySelectorAll('.book-page');
-    const dotEls = document.querySelectorAll('.dot');
+    const pageEls = document.querySelectorAll('.page-slide');
     
     if (index > currentPage) {
-        pageEls[currentPage].classList.add('slide-left');
+        pageEls[currentPage].classList.add('prev');
         pageEls[currentPage].classList.remove('active');
     } else {
-            pageEls[currentPage].classList.remove('active');
-            pageEls[currentPage].style.transform = 'translateX(20px)';
+        pageEls[currentPage].classList.remove('active');
+        // Reset transform for sliding back
+        pageEls[currentPage].classList.remove('prev');
     }
 
     currentPage = index;
-    pageEls[currentPage].classList.remove('slide-left');
-    pageEls[currentPage].style.transform = 'translateX(0)';
+    pageEls[currentPage].classList.remove('prev');
     pageEls[currentPage].classList.add('active');
-
-    dotEls.forEach(d => d.classList.remove('active'));
-    dotEls[currentPage].classList.add('active');
 
     updateNavButtons();
 }
@@ -259,6 +246,7 @@ function updateNavButtons() {
 function setupSwipe(element) {
     let touchStartX = 0;
     let touchEndX = 0;
+    if(!element) return;
     element.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, false);
     element.addEventListener('touchend', e => {
         touchEndX = e.changedTouches[0].screenX;
