@@ -156,19 +156,6 @@
         @keyframes loader-dots1 { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         @keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
         @keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
-
-        /* Simple badges for meta info */
-        .meta-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.35rem 0.65rem;
-            border-radius: 9999px;
-            background: rgba(15, 23, 42, 0.04);
-            color: #0f172a;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -223,28 +210,23 @@
         </div>
 
         <!-- PROPOSAL / LETTER THEME (Updated) -->
-        <div id="view-proposal" class="hidden absolute inset-0 w-full h-full bg-gradient-to-b from-rose-50 to-white overflow-y-auto z-20">
-            <div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-pink-200/30 rounded-full blur-[120px] pointer-events-none"></div>
-            <div class="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-rose-200/30 rounded-full blur-[120px] pointer-events-none"></div>
+        <div id="view-proposal" class="hidden absolute inset-0 w-full h-full bg-rose-50 overflow-hidden z-20">
+            <!-- Background Decoration -->
+            <div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-pink-200/40 rounded-full blur-[100px] pointer-events-none"></div>
+            <div class="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-rose-200/40 rounded-full blur-[100px] pointer-events-none"></div>
 
-            <div class="relative min-h-full flex items-center justify-center p-4 sm:p-8">
-                <div class="w-full max-w-3xl bg-white/90 backdrop-blur rounded-2xl shadow-2xl border border-rose-100 overflow-hidden">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-6 py-5 border-b border-rose-100 bg-rose-50/60">
-                        <div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-rose-400 font-semibold">Private Letter</p>
-                            <h1 class="text-xl font-bold text-rose-900">A secure message has been shared with you</h1>
-                        </div>
-                        <div class="flex flex-wrap gap-2" id="proposal-meta"></div>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div class="p-5 bg-slate-50 border border-slate-100 rounded-xl shadow-inner">
-                            <p id="proposal-content" class="whitespace-pre-wrap leading-relaxed text-slate-700 text-base sm:text-lg"></p>
-                        </div>
-                        <div class="flex items-center justify-between text-xs text-slate-500">
-                            <span class="flex items-center gap-2"><i class="fas fa-shield-halved text-rose-400"></i>One-time secure view</span>
-                            <button onclick="copyContent('proposal-content')" class="text-rose-500 hover:text-rose-700 font-semibold"><i class="fas fa-copy mr-1"></i>Copy text</button>
-                        </div>
-                    </div>
+            <!-- The Stage -->
+            <div class="book-stage" id="book-stage">
+                <div class="book-container" id="book-container">
+                    <!-- Pages Injected Here -->
+                </div>
+            </div>
+
+            <!-- Controls (Visual Indicator) -->
+            <div class="absolute bottom-6 inset-x-0 flex justify-center items-center gap-8 pointer-events-none">
+                <div class="bg-white/80 backdrop-blur px-6 py-2 rounded-full shadow-sm text-rose-500 font-bold font-cartoon flex items-center gap-2">
+                    <i class="fas fa-hand-pointer animate-pulse"></i>
+                    <span id="page-counter">Swipe to Turn</span>
                 </div>
             </div>
         </div>
@@ -320,22 +302,14 @@
                             </label>
                             <label class="cursor-pointer border-2 border-slate-100 p-4 rounded-lg flex items-center gap-3 transition-all" id="opt-proposal">
                                 <input type="radio" name="secret_type" value="proposal" class="hidden" onchange="updateTypeUI()">
-                                <i class="fas fa-feather-pointed text-pink-500 text-xl"></i>
+                                <i class="fas fa-heart text-pink-500 text-xl"></i>
                                 <div><p class="font-bold text-pink-900 text-sm">Proposal</p><p class="text-xs text-pink-700/70">Love Letter</p></div>
                             </label>
                         </div>
                         <textarea id="inp-content" rows="6" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Content..." required></textarea>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-2">
-                                <label for="inp-views" class="text-xs font-bold text-slate-700">Maximum viewers</label>
-                                <input type="number" id="inp-views" value="1" min="1" class="w-full p-3 border rounded-lg text-sm" placeholder="Number of people who can open it">
-                                <p class="text-[11px] text-slate-500">After the limit is reached the letter will self-destruct.</p>
-                            </div>
-                            <div class="space-y-2">
-                                <label for="inp-ttl" class="text-xs font-bold text-slate-700">Time online (seconds)</label>
-                                <input type="number" id="inp-ttl" value="0" min="0" class="w-full p-3 border rounded-lg text-sm" placeholder="0 for no timer">
-                                <p class="text-[11px] text-slate-500">Add an optional timer to automatically burn the letter.</p>
-                            </div>
+                        <div class="grid grid-cols-2 gap-6">
+                            <input type="number" id="inp-views" value="1" min="1" class="w-full p-3 border rounded-lg text-sm" placeholder="Views">
+                            <input type="number" id="inp-ttl" value="0" min="0" class="w-full p-3 border rounded-lg text-sm" placeholder="Seconds (0=None)">
                         </div>
                         <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border">
                             <input type="checkbox" id="inp-reply" class="w-4 h-4 text-brand-600">
@@ -384,6 +358,12 @@
         const urlParams = new URLSearchParams(window.location.search);
         const secretId = urlParams.get('id');
         let currentSecretId = null;
+        
+        // Viewer State
+        let proposalPages = [];
+        let currentPageIndex = 0;
+        let touchStartX = 0;
+        let isAnimating = false;
 
         window.onload = async () => {
             if (secretId) {
@@ -482,7 +462,7 @@
                 }
 
                 if (data.type === 'proposal') {
-                    setupProposal(data.content, data.settings, { max_views: data.max_views, view_count: data.view_count });
+                    setupProposal(data.content);
                 } else {
                     document.getElementById('view-standard').classList.remove('hidden');
                     document.getElementById('view-content').innerText = data.content;
@@ -495,43 +475,126 @@
             }
         }
 
-        function formatDuration(seconds) {
-            if (!seconds || seconds <= 0) return 'No expiry timer';
-            if (seconds < 60) return `${seconds}s`;
-            const minutes = Math.ceil(seconds / 60);
-            if (minutes < 60) return `${minutes} min${minutes > 1 ? 's' : ''}`;
-            const hours = Math.ceil(minutes / 60);
-            if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''}`;
-            const days = Math.ceil(hours / 24);
-            return `${days} day${days > 1 ? 's' : ''}`;
-        }
-
-        function addMetaChip(icon, text) {
-            const chip = document.createElement('span');
-            chip.className = 'meta-chip';
-            chip.innerHTML = `<i class="fas fa-${icon} text-rose-400"></i>${text}`;
-            return chip;
-        }
-
-        function setupProposal(text, settings = {}, meta = {}) {
+        function setupProposal(text) {
             const container = document.getElementById('view-proposal');
             container.classList.remove('hidden');
+            
+            // Smart Splitting for Pages (approx 450 chars per page to fit strictly)
+            const words = text.split(' ');
+            let pages = [];
+            let current = "";
+            const LIMIT = 450; 
+            
+            words.forEach(word => {
+                if((current + word).length > LIMIT) { pages.push(current); current = word + " "; }
+                else { current += word + " "; }
+            });
+            if(current) pages.push(current);
+            proposalPages = pages;
+            currentPageIndex = 0;
 
-            const contentEl = document.getElementById('proposal-content');
-            contentEl.innerText = text?.trim() || '';
+            renderBook();
+            attachSwipeListeners();
+        }
 
-            const metaWrap = document.getElementById('proposal-meta');
-            metaWrap.innerHTML = '';
+        function renderBook() {
+            const stage = document.getElementById('book-container');
+            stage.innerHTML = '';
+            
+            // Create Pages in Reverse Order (Stack Logic)
+            // Z-Index: Page 0 (top) = 100, Page 1 = 99...
+            proposalPages.forEach((content, i) => {
+                const el = document.createElement('div');
+                el.className = `book-page ${i === 0 ? 'active' : 'stacked'}`;
+                el.style.zIndex = 100 - i;
+                el.id = `page-${i}`;
+                el.innerHTML = `
+                    <div class="handwritten w-full h-full overflow-y-auto pr-2 scrollbar-hide">
+                        ${content}
+                        ${i === proposalPages.length - 1 ? '<div class="mt-8 text-center text-rose-400 text-3xl"><i class="fas fa-heart"></i></div>' : ''}
+                    </div>
+                    <div class="absolute bottom-4 right-6 text-slate-300 font-mono text-xs">${i + 1} / ${proposalPages.length}</div>
+                `;
+                stage.appendChild(el);
+            });
+            updateCounter();
+        }
 
-            if (meta.max_views) {
-                const currentView = meta.view_count ? Math.min(meta.view_count, meta.max_views) : 1;
-                metaWrap.appendChild(addMetaChip('users', `View ${currentView} of ${meta.max_views}`));
+        function updateCounter() {
+            document.getElementById('page-counter').innerText = `Page ${currentPageIndex + 1} of ${proposalPages.length}`;
+        }
+
+        // --- SWIPE LOGIC ---
+        function attachSwipeListeners() {
+            const zone = document.getElementById('book-stage');
+            
+            zone.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, {passive: false});
+
+            zone.addEventListener('touchmove', e => {
+                // Prevent browser native back/forward swipe
+                e.preventDefault();
+            }, {passive: false});
+
+            zone.addEventListener('touchend', e => {
+                const touchEndX = e.changedTouches[0].screenX;
+                handleGesture(touchStartX, touchEndX);
+            }, {passive: false});
+        }
+
+        function handleGesture(start, end) {
+            if (isAnimating) return;
+            const threshold = 50; // min distance
+            
+            if (start - end > threshold) {
+                // Swipe Left -> Next Page
+                nextPage();
+            } else if (end - start > threshold) {
+                // Swipe Right -> Prev Page
+                prevPage();
             }
+        }
 
-            const expirySeconds = settings?.expiry || 0;
-            const remainingSeconds = settings?.remaining_seconds ?? expirySeconds;
-            const timerText = expirySeconds > 0 ? `Burns in ${formatDuration(Math.max(remainingSeconds, 0))}` : 'No expiry timer';
-            metaWrap.appendChild(addMetaChip('clock', timerText));
+        function nextPage() {
+            if (currentPageIndex >= proposalPages.length - 1) return;
+            isAnimating = true;
+            
+            const curPage = document.getElementById(`page-${currentPageIndex}`);
+            const nextPage = document.getElementById(`page-${currentPageIndex + 1}`);
+            
+            // Animate Current Page Flipped Left
+            curPage.classList.remove('active');
+            curPage.classList.add('flipped');
+
+            // Bring Next Page Up
+            nextPage.classList.remove('stacked');
+            nextPage.classList.add('active');
+
+            currentPageIndex++;
+            updateCounter();
+            setTimeout(() => isAnimating = false, 600);
+        }
+
+        function prevPage() {
+            if (currentPageIndex <= 0) return;
+            isAnimating = true;
+            
+            currentPageIndex--;
+            
+            const prevPage = document.getElementById(`page-${currentPageIndex}`);
+            const curPage = document.getElementById(`page-${currentPageIndex + 1}`);
+
+            // Restore Previous Page
+            prevPage.classList.remove('flipped');
+            prevPage.classList.add('active');
+
+            // Push Current Page Down
+            curPage.classList.remove('active');
+            curPage.classList.add('stacked');
+            
+            updateCounter();
+            setTimeout(() => isAnimating = false, 600);
         }
 
         // --- REPLY & UTILS ---

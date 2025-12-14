@@ -117,17 +117,15 @@ export default {
                      await safeQuery(env, "UPDATE secrets SET is_active = 0, burned_at = ?, content = NULL WHERE id = ?", now, secretId);
                 }
 
-                return jsonResp({
+                return jsonResp({ 
                     type: secret.type,
-                    content: secret.content,
+                    content: secret.content, 
                     metadata: JSON.parse(secret.metadata || '{}'),
                     allow_reply: secret.allow_reply,
-                    max_views: secret.max_views,
-                    view_count: secret.view_count + 1,
-                    settings: {
+                    settings: { 
                         expiry: secret.expiry_seconds,
-                        remaining_seconds: remaining
-                    }
+                        remaining_seconds: remaining 
+                    } 
                 });
             }
 
